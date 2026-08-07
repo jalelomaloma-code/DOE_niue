@@ -14,7 +14,8 @@ class DocumentCategoryForm
                 TextInput::make('name')
                     ->required(),
                 TextInput::make('slug')
-                    ->required(),
+                    ->required()
+                    ->unique(ignoreRecord: true),
                 TextInput::make('sort_order')
                     ->required()
                     ->numeric()
