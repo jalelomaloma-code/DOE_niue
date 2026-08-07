@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ContentStatus;
 use App\Models\Programme;
 
 it('filters featured programmes', function () {
@@ -16,4 +17,18 @@ it('falls back to the summary for the SEO description', function () {
     ]);
 
     expect($programme->seoDescription())->toBe('Protecting Niue reef systems.');
+});
+
+it('reports isPublished() as true on a freshly loaded record, not just the in-memory instance', function () {
+    $programme = Programme::factory()->create([
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+
+    // Re-fetch from the database rather than reusing the in-memory instance:
+    // the enum cast is what makes the DB's raw 'published' string compare
+    // correctly against ContentStatus::Published in isPublished().
+    $fresh = Programme::findOrFail($programme->id);
+
+    expect($fresh->isPublished())->toBeTrue();
 });
