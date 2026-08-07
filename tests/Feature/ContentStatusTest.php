@@ -2,6 +2,7 @@
 
 use App\Enums\ContentStatus;
 use App\Models\Programme;
+use Carbon\Carbon;
 
 it('includes only published records with a past publish date', function () {
     Programme::factory()->create([
@@ -41,4 +42,21 @@ it('never leaks a future-dated article', function () {
     ]);
 
     expect(Programme::published()->count())->toBe(0);
+});
+
+it('agrees with itself at the exact instant published_at equals now', function () {
+    $frozenNow = Carbon::parse('2026-01-01 12:00:00');
+    Carbon::setTestNow($frozenNow);
+
+    try {
+        $programme = Programme::factory()->create([
+            'status' => ContentStatus::Published,
+            'published_at' => $frozenNow->copy(),
+        ]);
+
+        expect(Programme::published()->count())->toBe(1)
+            ->and($programme->isPublished())->toBeTrue();
+    } finally {
+        Carbon::setTestNow();
+    }
 });

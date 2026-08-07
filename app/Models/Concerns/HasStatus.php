@@ -23,6 +23,6 @@ trait HasStatus
     {
         return $this->status === ContentStatus::Published
             && $this->published_at !== null
-            && $this->published_at->isPast();
+            && ! $this->published_at->isFuture();
     }
 }
