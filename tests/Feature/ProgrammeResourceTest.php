@@ -126,6 +126,45 @@ it('hides the Published option from Editors but keeps it enabled for admins', fu
         });
 });
 
+it('lets an admin edit and re-save a programme that already has an image, without re-entering alt text', function () {
+    // Regression guard: SpatieMediaLibraryFileUpload::loadStateFromRelationshipsUsing
+    // (vendor/filament/spatie-laravel-media-library-plugin/.../SpatieMediaLibraryFileUpload.php:56-72)
+    // populates 'featured_image' with the existing media's uuid on every Edit
+    // page load, which made featured_image_alt's `required(fn ($get) =>
+    // filled($get('featured_image')))` condition true from the moment the
+    // page opened -- before anyone touched the form -- while the alt field
+    // itself rendered blank because nothing hydrated it from the record.
+    Storage::fake('public');
+    $admin = programmePanelAdmin();
+
+    Livewire::actingAs($admin)
+        ->test(CreateProgramme::class)
+        ->fillForm([
+            'title' => 'Reef Restoration Programme',
+            'slug' => 'reef-restoration-programme',
+            'summary' => 'Restoring damaged reef sections.',
+            'status' => ContentStatus::Draft->value,
+            'featured_image' => UploadedFile::fake()->image('reef.jpg'),
+            'featured_image_alt' => 'Divers replanting coral fragments',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $programme = Programme::where('slug', 'reef-restoration-programme')->firstOrFail();
+
+    // Edit the record and change only the title -- do not touch alt text.
+    Livewire::actingAs($admin)
+        ->test(EditProgramme::class, ['record' => $programme->getRouteKey()])
+        ->fillForm([
+            'title' => 'Reef Restoration Programme (Updated)',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($programme->fresh()->title)->toBe('Reef Restoration Programme (Updated)')
+        ->and($programme->fresh()->featuredImageAlt())->toBe('Divers replanting coral fragments');
+});
+
 it('lets an editor update but not delete or publish a programme, and lets an admin do both', function () {
     $editor = programmePanelEditor();
     $admin = programmePanelAdmin();

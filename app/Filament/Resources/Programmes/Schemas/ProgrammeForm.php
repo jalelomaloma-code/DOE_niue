@@ -41,6 +41,7 @@ class ProgrammeForm
                 TextInput::make('featured_image_alt')
                     ->label('Alt text')
                     ->helperText('Describes the image for screen readers and search engines.')
+                    ->afterStateHydrated(fn ($component, $record) => $component->state($record?->featuredImageAlt()))
                     ->required(fn (Get $get): bool => filled($get('featured_image')))
                     ->maxLength(255)
                     ->dehydrated(false),
@@ -49,7 +50,7 @@ class ProgrammeForm
                     ->options(function (): array {
                         $options = ContentStatus::options();
 
-                        if (! auth()->user()->mayPublish()) {
+                        if (! (auth()->user()?->mayPublish() ?? false)) {
                             unset($options[ContentStatus::Published->value]);
                         }
 
