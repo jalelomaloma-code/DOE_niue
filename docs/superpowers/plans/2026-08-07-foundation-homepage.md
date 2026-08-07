@@ -335,14 +335,15 @@ Create `tests/Feature/LayoutTest.php`:
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 
 beforeEach(function () {
+    // The probe view is a test fixture, not an application view.
+    View::addLocation(base_path('tests/Fixtures/views'));
     Route::get('/__layout-probe', fn () => view('probe'));
 });
 
 it('renders the document shell with a skip link and dynamic title', function () {
-    \Illuminate\Support\Facades\View::addNamespace('probe', resource_path('views'));
-
     $response = $this->withoutVite()->get('/__layout-probe');
 
     $response->assertOk();
@@ -352,13 +353,15 @@ it('renders the document shell with a skip link and dynamic title', function () 
 });
 ```
 
-Create the probe view `resources/views/probe.blade.php`:
+Create the probe view as a **test fixture**, not an application view — nothing test-related belongs in `resources/views/`, which a future developer reads as the list of real pages. Put it at `tests/Fixtures/views/probe.blade.php`:
 
 ```blade
 <x-layouts.public title="Probe" description="Probe description">
     <h1>Probe</h1>
 </x-layouts.public>
 ```
+
+The `View::addLocation()` call in the test above is what makes this fixture path resolvable. Do not create `resources/views/probe.blade.php`.
 
 - [ ] **Step 5: Run the test to verify it fails**
 
@@ -1207,6 +1210,49 @@ php artisan vendor:publish --provider="Spatie\MediaLibrary\MediaLibraryServicePr
 php artisan migrate
 ```
 
+- [ ] **Step 1b: Create the shared featured-image trait**
+
+`Programme`, `Project` and `NewsArticle` all carry the same two image collections and the same two conversions. Declare them once.
+
+`app/Models/Concerns/HasFeaturedImage.php`:
+
+```php
+<?php
+
+namespace App\Models\Concerns;
+
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+/**
+ * Featured and Open Graph imagery, shared by every model that appears as a
+ * card or a hero. Conversion sizes live here so they change in one place.
+ */
+trait HasFeaturedImage
+{
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('featured_image')->singleFile();
+        $this->addMediaCollection('og_image')->singleFile();
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('card')->width(600)->height(400)->nonQueued();
+        $this->addMediaConversion('hero')->width(1920)->height(900)->nonQueued();
+    }
+
+    public function featuredImageUrl(string $conversion = 'card'): ?string
+    {
+        return $this->getFirstMediaUrl('featured_image', $conversion) ?: null;
+    }
+
+    public function featuredImageAlt(): ?string
+    {
+        return $this->getFirstMedia('featured_image')?->getCustomProperty('alt');
+    }
+}
+```
+
 - [ ] **Step 2: Create the migration**
 
 ```powershell
@@ -1256,7 +1302,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Programme extends Model implements HasMedia
 {
-    use HasBlame, HasFactory, HasSeo, HasStatus, InteractsWithMedia;
+    use HasBlame, HasFactory, HasFeaturedImage, HasSeo, HasStatus, InteractsWithMedia;
 
     protected $fillable = [
         'title', 'slug', 'summary', 'body', 'is_featured', 'sort_order',
@@ -1288,19 +1334,11 @@ class Programme extends Model implements HasMedia
         return $this->summary;
     }
 
-    public function registerMediaCollections(): void
-    {
-        $this->addMediaCollection('featured_image')->singleFile();
-        $this->addMediaCollection('og_image')->singleFile();
-    }
-
-    public function registerMediaConversions(?Media $media = null): void
-    {
-        $this->addMediaConversion('card')->width(600)->height(400)->nonQueued();
-        $this->addMediaConversion('hero')->width(1920)->height(900)->nonQueued();
-    }
+    // Media collections and conversions come from HasFeaturedImage (Step 1b).
 }
 ```
+
+Note the trait list on the class must include `HasFeaturedImage`, and the `use Spatie\MediaLibrary\MediaCollections\Models\Media;` import is no longer needed on the model itself.
 
 - [ ] **Step 4: Create the factory**
 
@@ -1438,7 +1476,24 @@ In the generated form schema, add — adapting to the generated signature:
 - `RichEditor::make('body')`
 - `SpatieMediaLibraryFileUpload::make('featured_image')->collection('featured_image')->image()`
 - **an `alt` custom property on that upload marked `->required()`** — alt text is enforced at upload time per the global constraints
-- `Select::make('status')->options(ContentStatus::options())->required()->disabled(fn () => ! auth()->user()->mayPublish() )` for the Published option only
+- the status select, whose **options list** is filtered by role — the field itself is always enabled, but an Editor never sees `Published` in it:
+
+```php
+Select::make('status')
+    ->options(function (): array {
+        $options = ContentStatus::options();
+
+        if (! auth()->user()->mayPublish()) {
+            unset($options[ContentStatus::Published->value]);
+        }
+
+        return $options;
+    })
+    ->default(ContentStatus::Draft->value)
+    ->required()
+```
+
+Filtering options is not by itself a security control — the `publish` policy ability is what actually enforces this. The filtered list keeps Editors from attempting something they cannot do.
 - `DateTimePicker::make('published_at')`
 - `Toggle::make('is_featured')`
 - an SEO section containing `seo_title` and `seo_description`
@@ -1575,7 +1630,7 @@ public function seoFallbackDescription(): ?string
 }
 ```
 
-Media collections and conversions are identical to `Programme` (Task 8, Step 3) — repeat them verbatim.
+Media handling comes from the shared `HasFeaturedImage` trait created in Task 8 Step 1b — add it to the trait list. Do **not** redeclare `registerMediaCollections()` or `registerMediaConversions()` on this model.
 
 - [ ] **Step 5: Create the factory**
 
@@ -2837,18 +2892,27 @@ class HomeController extends Controller
      * Featured items first; if nothing is flagged, fall back to the most
      * recent so a section never sits empty merely because nobody ticked a box.
      */
-    private function featuredOrLatest(\Illuminate\Database\Eloquent\Builder $query, int $limit)
-    {
-        $featured = (clone $query)->published()->featured()->orderBy('sort_order')->take($limit)->get();
+    private function featuredOrLatest(
+        \Illuminate\Database\Eloquent\Builder $query,
+        int $limit,
+        ?string $orderColumn = null,
+    ): \Illuminate\Database\Eloquent\Collection {
+        $featured = (clone $query)->published()->featured();
 
-        return $featured->isNotEmpty()
-            ? $featured
+        $featured = $orderColumn
+            ? $featured->orderBy($orderColumn)
+            : $featured->latest('published_at');
+
+        $results = $featured->take($limit)->get();
+
+        return $results->isNotEmpty()
+            ? $results
             : $query->published()->latest('published_at')->take($limit)->get();
     }
 }
 ```
 
-`Project` has no `sort_order` column, so use a `Project`-specific ordering — replace `orderBy('sort_order')` with `latest('published_at')` when the query is on `Project`. Simplest correct approach: give `featuredOrLatest` a `?string $order = null` parameter and pass `'sort_order'` for programmes only.
+Call it as `$this->featuredOrLatest(Programme::query(), 4, 'sort_order')` and `$this->featuredOrLatest(Project::query(), 3)`. **`projects` has no `sort_order` column** — passing one there raises a Postgres `column does not exist` error at runtime, which is why the column is a parameter rather than hard-coded.
 
 - [ ] **Step 4: Build the homepage view**
 
