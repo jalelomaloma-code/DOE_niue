@@ -3,6 +3,8 @@
 @import "@fontsource/public-sans/600.css";
 @import "@fontsource/public-sans/700.css";
 
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
 @theme {
     --color-brand: #003A70;
     --color-accent: #FCD116;
