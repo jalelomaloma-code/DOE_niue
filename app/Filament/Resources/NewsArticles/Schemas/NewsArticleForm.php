@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Filament\Resources\NewsArticles\Schemas;
+
+use App\Enums\ContentStatus;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
+
+class NewsArticleForm
+{
+    public static function configure(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('title')
+                    ->required()
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (string $state, callable $set) => $set('slug', Str::slug($state))),
+                TextInput::make('slug')
+                    ->required()
+                    ->unique(ignoreRecord: true),
+                Textarea::make('excerpt')
+                    ->rows(3)
+                    ->maxLength(300)
+                    ->columnSpanFull(),
+                RichEditor::make('body')
+                    ->columnSpanFull(),
+                Select::make('news_category_id')
+                    ->relationship('category', 'name')
+                    ->required(),
+                TextInput::make('author_name')
+                    ->helperText('Leave blank to use your own name as the byline.'),
+                SpatieMediaLibraryFileUpload::make('featured_image')
+                    ->collection('featured_image')
+                    ->image()
+                    ->customProperties(fn (Get $get): array => ['alt' => $get('featured_image_alt')]),
+                TextInput::make('featured_image_alt')
+                    ->label('Alt text')
+                    ->helperText('Describes the image for screen readers and search engines.')
+                    ->afterStateHydrated(fn ($component, $record) => $component->state($record?->featuredImageAlt()))
+                    ->required(fn (Get $get): bool => filled($get('featured_image')))
+                    ->maxLength(255)
+                    ->dehydrated(false),
+                Toggle::make('is_featured'),
+                Select::make('status')
+                    ->options(function (): array {
+                        $options = ContentStatus::options();
+
+                        if (! (auth()->user()?->mayPublish() ?? false)) {
+                            unset($options[ContentStatus::Published->value]);
+                        }
+
+                        return $options;
+                    })
+                    ->default(ContentStatus::Draft->value)
+                    ->required(),
+                DateTimePicker::make('published_at'),
+                Toggle::make('share_to_facebook')
+                    ->helperText('Facebook publishing is not yet connected. This flag is stored for a later phase.')
+                    ->disabled(),
+                Section::make('SEO')
+                    ->components([
+                        TextInput::make('seo_title'),
+                        Textarea::make('seo_description')
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+    }
+}
