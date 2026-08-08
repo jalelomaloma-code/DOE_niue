@@ -19,8 +19,13 @@ class QuickLinkSeeder extends Seeder
         ];
 
         foreach ($links as $index => $link) {
+            // Keyed on label, not url: the six URLs above are placeholders
+            // for routes that arrive in Specs 2-4 and will change. Labels
+            // are the stable, client-facing identity of a quick link, so
+            // re-running this seeder after a URL edit updates the existing
+            // row instead of leaving a stale, still-active duplicate behind.
             QuickLink::updateOrCreate(
-                ['url' => $link['url']],
+                ['label' => $link['label']],
                 [...$link, 'sort_order' => $index, 'is_active' => true],
             );
         }

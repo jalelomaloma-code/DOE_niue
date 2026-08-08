@@ -25,8 +25,20 @@ class QuickLinkForm
                     ->native(false),
                 TextInput::make('url')
                     ->label('URL')
-                    ->helperText('A site-relative path, e.g. /waste-and-recycling')
+                    ->helperText('A site-relative path, e.g. /waste-and-recycling, or a full https:// URL.')
                     ->required()
+                    // Deliberately narrower than Filament's own ->url() (which
+                    // requires a scheme and would reject every seeded
+                    // site-relative path). Accepts only a single-leading-slash
+                    // relative path or an http(s) URL; explicitly excludes
+                    // javascript:, data: and protocol-relative "//host" forms,
+                    // since this value is rendered into an <a href="..."> on
+                    // the public homepage and Blade's {{ }} does not
+                    // neutralise a javascript: scheme.
+                    ->regex('/^(\/(?!\/)\S*|https?:\/\/\S+)$/')
+                    ->validationMessages([
+                        'regex' => 'The URL must be a site-relative path starting with / (not //) or a full http(s):// URL.',
+                    ])
                     ->unique(ignoreRecord: true),
                 TextInput::make('sort_order')
                     ->required()
