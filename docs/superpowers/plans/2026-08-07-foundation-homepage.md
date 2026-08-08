@@ -2356,41 +2356,27 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 14: Demo content and the purge command
 
 **Files:**
-- Create: `database/seeders/DemoContentSeeder.php`, `app/Console/Commands/PurgeDemoContent.php`, `database/seeders/demo-images/` (CC0 photographs), `docs/LICENSES.md`
+- Create: `database/seeders/DemoContentSeeder.php`, `app/Console/Commands/PurgeDemoContent.php`, `app/Support/DemoImageGenerator.php`, `app/Support/DemoPdfGenerator.php`
 - Test: `tests/Feature/DemoContentTest.php`
 
 **Interfaces:**
 - Consumes: all content models from Tasks 8–11
 - Produces: `php artisan demo:purge`, and seeded content where every record has `is_demo = true`
 
-> **⚠ HUMAN ACTION IN THIS TASK.** The CC0 photographs must be sourced by a human who verifies each licence. An agent must not download images from arbitrary URLs and assert they are CC0.
+> **Imagery decision superseded.** The original plan (below, struck through in spirit) was
+> to source verified CC0/public-domain photography and record provenance in
+> `docs/LICENSES.md`. The client reversed that decision: no photograph is downloaded or
+> committed. `DemoImageGenerator` draws deterministic, labelled gradients from the project
+> palette with PHP's GD extension instead — zero licensing risk, fully offline, and a
+> placeholder is unmistakable on sight because it says "DEMO — &lt;subject&gt;" on its face.
+> `DemoPdfGenerator` does the equivalent for `Document` files: a minimal, genuinely valid
+> hand-written PDF rather than a sourced or invented publication. There is no
+> `docs/LICENSES.md` and no `database/seeders/demo-images/` directory — nothing to record
+> provenance for. Steps 1–2 below (source photographs, record provenance) are skipped
+> entirely; Step 5 (the seeder) calls the generators instead of `addMedia()` on a committed
+> file path.
 
-- [ ] **Step 1: Source the demo photographs**
-
-Obtain 8–12 genuinely CC0 / public-domain photographs covering ocean, coastline, reef, forest, waste management and community conservation. Suitable sources are the CC0 collections on Openverse, Wikimedia Commons files explicitly marked CC0 or public domain, and Unsplash+ CC0-era images whose licence you have confirmed individually.
-
-Save to `database/seeders/demo-images/` with descriptive names (`coastline-01.jpg`, `reef-02.jpg`).
-
-- [ ] **Step 2: Record provenance**
-
-Create `docs/LICENSES.md`:
-
-```markdown
-# Demo Image Licences
-
-Every image in `database/seeders/demo-images/` is placeholder content for
-development only. All are CC0 or public domain. None originate from the Fiji
-Environment website or any other government site.
-
-These images are seeded with `is_demo = true` and are removed by
-`php artisan demo:purge` before the site carries real Department photography.
-
-| File | Source URL | Licence | Verified by | Date |
-|------|-----------|---------|-------------|------|
-| coastline-01.jpg | <url> | CC0 | <name> | 2026-08-07 |
-```
-
-Fill a row per image. An unverified image does not go in the repository.
+- [ ] **Step 1 & 2: skipped — see the note above**
 
 - [ ] **Step 3: Write the failing test**
 
@@ -2438,11 +2424,22 @@ Expected: FAIL — seeder and command do not exist.
 
 - [ ] **Step 5: Write the demo seeder**
 
-`database/seeders/DemoContentSeeder.php` creates six programmes matching the brief (Conservation, Waste Management, Marine Conservation, Biodiversity, Climate Resilience, Community Clean-Up), four to six news articles across categories, three to four projects linked to programmes, and six documents across the seeded categories. Every record sets `is_demo => true`, `status => ContentStatus::Published` and `published_at => now()->subDays(n)`.
+`database/seeders/DemoContentSeeder.php` creates six programmes matching the brief (Conservation, Waste Management, Marine Conservation, Biodiversity, Climate Resilience, Community Clean-Up), five news articles across categories, four projects linked to programmes, and six documents across the seeded categories. Every record sets `is_demo => true`, `status => ContentStatus::Published` and `published_at => now()->subDays(n)`.
 
-Attach images with `addMedia(database_path('seeders/demo-images/<file>'))->preservingOriginal()->toMediaCollection('featured_image')`, setting the `alt` custom property on each — alt text is required everywhere, including seeds.
+Attach images with `DemoImageGenerator::make($palette, $label, $width, $height)` (returns a generated JPEG path) piped into `addMedia($path)->preservingOriginal()->withCustomProperties(['alt' => ...])->toMediaCollection('featured_image')` — alt text is required everywhere, including seeds. `Document` files come from `DemoPdfGenerator::make(...)` the same way, into the `file` collection.
 
 Mark at least two programmes, two projects and three documents `is_featured => true` so every homepage section has content.
+
+`DatabaseSeeder` calls `DemoContentSeeder` alongside the others. It deliberately does **not**
+use `Illuminate\Database\Console\Seeds\WithoutModelEvents` — that trait swaps in a
+`NullDispatcher` for the entire duration of `run()`, including everything nested `$this->call()`
+invokes, which silently suppresses Spatie MediaLibrary's `Media::creating` event and leaves
+every seeded media row's `uuid` column empty. Filament's `SpatieMediaLibraryFileUpload` keys
+its "existing file" state by that `uuid`, so with the trait in place every seeded image or
+PDF attaches correctly at the database level but never renders a thumbnail/preview in the
+admin edit form — a real bug caught by opening the seeded records in the browser, not by
+the automated test suite (which seeds `DemoContentSeeder` directly, bypassing
+`DatabaseSeeder`'s wrapper).
 
 - [ ] **Step 6: Write the purge command**
 
@@ -2508,11 +2505,13 @@ Expected: both tests PASS; the database now holds roles, categories, settings, q
 - [ ] **Step 8: Commit**
 
 ```powershell
-git add -A
-git commit -m "feat: demo content seeder with CC0 imagery and demo:purge
+git add app/Console/Commands/PurgeDemoContent.php app/Support/DemoImageGenerator.php app/Support/DemoPdfGenerator.php database/seeders/DemoContentSeeder.php database/seeders/DatabaseSeeder.php tests/Feature/DemoContentTest.php docs/superpowers
+git commit -m "feat: demo content seeder with generated placeholders and demo:purge
 
-Every seeded record carries is_demo=true. Image provenance recorded in
-docs/LICENSES.md; nothing sourced from the Fiji Environment website.
+Every seeded record carries is_demo=true. Imagery and documents are
+generated at seed time (GD gradients, hand-written PDFs) rather than
+sourced, per the client's reversal of the CC0-photography plan --
+zero licensing risk and the seeder runs fully offline.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```

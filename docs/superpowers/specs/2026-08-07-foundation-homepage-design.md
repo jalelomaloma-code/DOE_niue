@@ -233,13 +233,20 @@ management, marine conservation, biodiversity, climate resilience and community 
 several news articles across categories; sample projects; and sample publications, reports
 and policies. All flagged `is_demo = true`.
 
-**Imagery:** a small set of verified CC0 / public-domain Pacific ocean, coastline, forest
-and conservation photographs, committed to the repository. Each image's source and licence
-is recorded in `docs/LICENSES.md`. No content of any kind is taken from the Fiji
-Environment website.
+**Imagery:** generated at seed time, not sourced. Sourcing and verifying CC0 photography
+was the original plan, but the client reversed that decision: no photograph of any kind is
+downloaded or committed to the repository. Instead, `DemoImageGenerator` (using PHP's GD
+extension) draws deterministic gradients from the project palette — Pacific Blue into
+Environment Green for marine and coastline subjects, Environment Green into Deep Navy for
+forest and conservation, and comparable pairings for waste and climate — labelled directly
+on the image (`DEMO — <subject>`) so a placeholder is unmistakable on sight. The same input
+always produces the same image. This carries zero licensing risk, keeps the seeder fully
+offline, and removes the human-verification step CC0 sourcing would have required. Demo
+`Document` files are generated the same way, by `DemoPdfGenerator`, as minimal valid PDFs
+rather than sourced or invented publications.
 
-The `is_demo` flag and `demo:purge` command are the safeguard against placeholder
-photography surviving into production.
+The `is_demo` flag and `demo:purge` command are the safeguard against placeholder content
+surviving into production.
 
 ---
 
@@ -364,8 +371,9 @@ Pest. Spec 1 covers the failures that would actually cause harm:
 
 `README.md`, plus `docs/architecture.md`, `docs/cms-guide.md`,
 `docs/deployment-readiness.md` and `docs/social-media-integration.md`. Written so another
-competent Laravel developer could take the project over. `docs/LICENSES.md` records demo
-image provenance.
+competent Laravel developer could take the project over. There is no `docs/LICENSES.md`:
+demo imagery and documents are generated in code (§6), not sourced, so there is no
+provenance to record.
 
 ---
 
