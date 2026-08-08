@@ -12,20 +12,17 @@ class SiteSetting extends Model implements HasMedia
 
     protected $guarded = [];
 
-    /**
-     * Mirrors the DB-level column defaults. `firstOrCreate([])` inserts via
-     * `insertGetId`, which only returns the new id — it never re-reads the
-     * row, so without these the in-memory model would see null instead of
-     * the defaults Postgres actually wrote.
-     */
-    protected $attributes = [
-        'department_name' => 'Niue Department of Environment',
-        'government_name' => 'Government of Niue',
-    ];
-
     public static function current(): self
     {
-        return static::firstOrCreate([]);
+        // `firstOrCreate([])` inserts via `insertGetId`, which returns only
+        // the new id — it never re-reads the row, so on the creation path
+        // the in-memory model would see null instead of the DB-level column
+        // defaults Postgres actually wrote. Refresh only when a row was just
+        // created; an existing row was already loaded correctly by the
+        // `where([])->first()` lookup inside `firstOrCreate`.
+        $model = static::firstOrCreate([]);
+
+        return $model->wasRecentlyCreated ? $model->fresh() : $model;
     }
 
     public function registerMediaCollections(): void
