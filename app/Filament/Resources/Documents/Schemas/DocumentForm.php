@@ -30,7 +30,8 @@ class DocumentForm
                     ->rows(3)
                     ->columnSpanFull(),
                 Select::make('document_category_id')
-                    ->relationship('category', 'name'),
+                    ->relationship('category', 'name')
+                    ->required(),
                 SpatieMediaLibraryFileUpload::make('file')
                     ->collection('file')
                     ->acceptedFileTypes([

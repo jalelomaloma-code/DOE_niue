@@ -41,8 +41,18 @@ function documentPanelEditor(): User
 // trusting a client-declared MIME type, so `UploadedFile::fake()->create()`
 // (which never writes real bytes to its temp file -- see DocumentTest.php)
 // cannot stand in for a real upload anywhere in this suite.
+//
+// The 20MB variant used by the oversized-file test, combined with the
+// featured-image suite's own oversized (~6MB) payload later in the same
+// run, pushes the shared PHPUnit process past PHP CLI's default 128M
+// memory_limit when the whole suite runs in one process (each test's
+// large buffers aren't fully released before the next test starts). Raised
+// locally here rather than in phpunit.xml, since it's only these two
+// deliberately-oversized-upload tests that need the headroom.
 function fakePdf(string $name = 'report.pdf', int $extraKilobytes = 100): UploadedFile
 {
+    ini_set('memory_limit', '256M');
+
     return UploadedFile::fake()->createWithContent($name, "%PDF-1.4\n".str_repeat('A', $extraKilobytes * 1024));
 }
 
@@ -79,6 +89,30 @@ it('creates a document with a category and an attached PDF', function () {
         ->and($document->fileType())->toBe('PDF');
 });
 
+it('requires a category, so a document cannot be saved uncategorised', function () {
+    // The migration column stays nullable with nullOnDelete() -- that's
+    // deliberate, so deleting a category doesn't destroy its documents.
+    // This form-level requirement is the separate, save-time guard: Spec 3's
+    // Resources page filters by category, so an uncategorised document
+    // would be published but invisible in every filtered view.
+    Storage::fake('public');
+    $admin = documentPanelAdmin();
+
+    Livewire::actingAs($admin)
+        ->test(CreateDocument::class)
+        ->fillForm([
+            'title' => 'Uncategorised Report',
+            'slug' => 'uncategorised-report',
+            'status' => ContentStatus::Draft->value,
+            'file' => fakePdf(),
+            'document_category_id' => null,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['document_category_id' => 'required']);
+
+    expect(Document::where('slug', 'uncategorised-report')->exists())->toBeFalse();
+});
+
 it('rejects an image upload as a disallowed document MIME type', function () {
     // A genuine PNG (UploadedFile::fake()->image() writes real GD-rendered
     // bytes, not just a declared MIME string) is not in the accepted list
@@ -95,12 +129,24 @@ it('rejects an image upload as a disallowed document MIME type', function () {
             'file' => UploadedFile::fake()->image('malware.png'),
         ])
         ->call('create')
-        // acceptedFileTypes()/maxSize() are registered via Filament's
-        // ->rule(Closure) rather than plain "mimetypes:..."/"max:..."
-        // strings, so the validator records the failed rule under
-        // Illuminate\Validation\ClosureValidationRule -- there is no rule
-        // name to assert against. The message text is the only signal
-        // that this specific rule (not some other one) is what fired.
+        // acceptedFileTypes()/maxSize() are each registered via
+        // CanBeValidated::rule(Closure) and ARE eagerly evaluated into a
+        // plain "mimetypes:..."/"max:..." string
+        // (CanBeValidated::getValidationRules(), ~line 872: `$rule =
+        // $this->evaluate($rule);`). But BaseFileUpload::getValidationRules()
+        // (which every file-upload field uses instead of the plain trait
+        // behaviour) collects those per-file string rules and re-validates
+        // them itself inside a single outer closure it adds to the field's
+        // rule set (BaseFileUpload.php ~752-771): it runs its own nested
+        // Validator::make() against the real file and, on failure, calls the
+        // outer $fail() with just the message text. Laravel's outer
+        // validator only ever sees that one opaque closure, so it records
+        // the failure under Illuminate\Validation\ClosureValidationRule --
+        // confirmed empirically (dumped failedRules() and tried the
+        // rule-name assertion directly), not assumed. There is no inner
+        // rule name ('mimetypes' or 'max') left to assert against by the
+        // time it reaches the outer failedRules(); the message is the only
+        // signal that this specific rule, not some other one, fired.
         ->assertHasFormErrors([
             'file' => fn ($failedRules, $messages) => str_contains($messages[0] ?? '', 'file of type'),
         ]);

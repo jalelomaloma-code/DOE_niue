@@ -49,6 +49,7 @@ class ProjectForm
                 SpatieMediaLibraryFileUpload::make('featured_image')
                     ->collection('featured_image')
                     ->image()
+                    ->maxSize(5120)
                     ->customProperties(fn (Get $get): array => ['alt' => $get('featured_image_alt')]),
                 TextInput::make('featured_image_alt')
                     ->label('Alt text')

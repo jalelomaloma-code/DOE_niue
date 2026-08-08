@@ -108,6 +108,74 @@ it('requires alt text once an image is attached, and saves the alt as a media cu
     expect($article->featuredImageAlt())->toBe('Volunteers cleaning the reef shoreline');
 });
 
+it('rejects a featured image larger than the 5MB limit', function () {
+    // Featured images had no maxSize() of their own until the Document
+    // resource's 20MB upload requirement forced config/livewire.php and
+    // config/media-library.php's global upload ceilings up from their
+    // package defaults (12MB / 10MB) to 25MB each -- which, as a side
+    // effect, quietly raised every OTHER upload field (including this one)
+    // to the same 25MB ceiling. This field-level maxSize(5120) closes that
+    // gap and keeps featured images tighter than before, not looser.
+    // This test's ~6MB buffer, combined with DocumentResourceTest's own
+    // ~20MB oversized-upload test in the same PHPUnit process, can exceed
+    // PHP CLI's default 128M memory_limit when the whole suite runs
+    // together (large buffers from earlier tests aren't fully released
+    // before later tests start). Raised locally rather than in
+    // phpunit.xml, since only these two deliberately-oversized-upload
+    // tests need the headroom.
+    ini_set('memory_limit', '256M');
+
+    Storage::fake('public');
+    $admin = newsArticlePanelAdmin();
+    $category = NewsCategory::create(['name' => 'Announcements', 'slug' => 'announcements']);
+
+    // A real (GD-rendered) PNG signature padded with null bytes past the
+    // IEND chunk. getimagesize()/mime_content_type() still read this as a
+    // genuine 10x10 image/png (verified independently with a standalone
+    // script), so this exercises maxSize() specifically -- not the
+    // image-type rule, which a garbage payload would trip instead.
+    ob_start();
+    imagepng(imagecreatetruecolor(10, 10));
+    $png = ob_get_clean();
+    $oversizedImage = UploadedFile::fake()->createWithContent(
+        'huge-hero.png',
+        $png.str_repeat("\0", 6 * 1024 * 1024) // ~6MB, over the 5MB (5120KB) limit
+    );
+
+    Livewire::actingAs($admin)
+        ->test(CreateNewsArticle::class)
+        ->fillForm([
+            'title' => 'Oversized Hero Image',
+            'slug' => 'oversized-hero-image',
+            'excerpt' => 'Too large a hero image.',
+            'news_category_id' => $category->id,
+            'status' => ContentStatus::Draft->value,
+            'featured_image' => $oversizedImage,
+            'featured_image_alt' => 'A very large image',
+        ])
+        ->call('create')
+        // maxSize()/acceptedFileTypes() are each registered via
+        // CanBeValidated::rule(Closure) and ARE eagerly evaluated into a
+        // plain "max:5120" string (CanBeValidated::getValidationRules()).
+        // But BaseFileUpload::getValidationRules() (which every file-upload
+        // field uses instead of the plain trait behaviour) then collects
+        // those per-file string rules and re-validates them itself, inside
+        // a single outer closure it adds to the field's rule set
+        // (BaseFileUpload.php ~752-771): it runs its own nested
+        // Validator::make() against the real file and, on failure, calls
+        // the outer $fail() with just the message text. Laravel's outer
+        // validator only ever sees that one opaque closure, so it records
+        // the failure under Illuminate\Validation\ClosureValidationRule --
+        // confirmed empirically here, not assumed. There is no inner rule
+        // name ('max' or 'mimetypes') left to assert against by the time it
+        // reaches the outer failedRules(); the message is the only signal.
+        ->assertHasFormErrors([
+            'featured_image' => fn ($failedRules, $messages) => str_contains($messages[0] ?? '', 'kilobytes'),
+        ]);
+
+    expect(NewsArticle::where('slug', 'oversized-hero-image')->exists())->toBeFalse();
+});
+
 it('hides the Published option from Editors but keeps it enabled for admins', function () {
     // Two halves of "Editors cannot publish": this is the usability half
     // (options filtering). The security half is covered separately below,
