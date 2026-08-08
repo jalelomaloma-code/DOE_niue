@@ -20,7 +20,9 @@ class HomepageSetting extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('hero_image')->singleFile();
+        // See the comment in HasFeaturedImage::registerMediaCollections()
+        // for why the disk must be pinned explicitly to 'public'.
+        $this->addMediaCollection('hero_image')->singleFile()->useDisk('public');
     }
 
     public function registerMediaConversions(?Media $media = null): void

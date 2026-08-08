@@ -70,8 +70,11 @@ class Document extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        // See the comment in HasFeaturedImage::registerMediaCollections()
+        // for why the disk must be pinned explicitly to 'public'.
         $this->addMediaCollection('file')
             ->singleFile()
+            ->useDisk('public')
             ->acceptsMimeTypes([
                 'application/pdf',
                 'application/msword',
