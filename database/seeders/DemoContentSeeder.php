@@ -55,14 +55,14 @@ class DemoContentSeeder extends Seeder
             [
                 'title' => 'Waste Management Programme',
                 'summary' => 'Reducing landfill dependence through recycling, composting and safer disposal of hazardous waste.',
-                'body' => "Niue's small land area makes sustainable waste management essential. This programme covers household and commercial waste collection, a recycling stream for common materials, a community composting initiative, and safe handling procedures for hazardous items such as batteries and used oil.\n\nThe Department works with the Niue Public Works Department and village councils to keep collection routes reliable and to expand what can be diverted from landfill each year.",
+                'body' => "Niue's small land area makes sustainable waste management essential. This programme covers household and commercial waste collection, a recycling stream for common materials, a community composting initiative, and safe handling procedures for hazardous items such as batteries and used oil.\n\nThe Department works with other government agencies and village councils to keep collection routes reliable and to expand what can be diverted from landfill each year.",
                 'palette' => 'waste',
                 'subject' => 'waste management',
                 'featured' => false,
             ],
             [
                 'title' => 'Marine Conservation Programme',
-                'summary' => 'Safeguarding Niue\'s reefs, deep-water habitats and the Niue Nukutuluea Multiple-Use Marine Park.',
+                'summary' => 'Safeguarding Niue\'s reefs, deep-water habitats and the island\'s marine protected area.',
                 'body' => "Niue's surrounding waters hold coral reef systems and deep-water habitats of significant ecological value. This programme supports reef health monitoring, sustainable fisheries practices, and community stewardship of marine protected areas.\n\nWork includes coordinating with local dive operators and fishers on responsible-use guidelines, and supporting monitoring of reef condition over time so management decisions are based on current data rather than assumption.",
                 'palette' => 'marine',
                 'subject' => 'marine conservation',
@@ -195,7 +195,7 @@ class DemoContentSeeder extends Seeder
     {
         $projects = [
             [
-                'title' => 'Coastal Mangrove Restoration',
+                'title' => 'Coastal Vegetation Restoration',
                 'summary' => 'Restoring coastal vegetation to reduce erosion along vulnerable shoreline sections.',
                 'programme' => 'Conservation Programme',
                 'status' => ProjectStatus::Active,

@@ -31,13 +31,29 @@ it('removes all demo content and leaves real content alone', function () {
         ->and(Document::count())->toBe(0);
 });
 
+// Deliberately does NOT Storage::fake('public'), unlike the other Resource
+// tests. A fake disk would only prove medialibrary's own delete hook runs
+// against a temporary directory Laravel throws away anyway -- it can't prove
+// files are gone from the disk the app actually serves. Asserting against
+// real paths is what lets this test (and it alone) prove demo:purge cleans
+// up storage, not just rows. The cost: repeated `pest` runs leave small,
+// harmless, gitignored files behind under storage/app/public/{id}/, since
+// RefreshDatabase truncates tables but never touches physical storage.
 it('deletes media files from disk, not merely the database rows', function () {
     $this->seed(\Database\Seeders\DemoContentSeeder::class);
 
-    $programme = Programme::whereHas('media')->firstOrFail();
-    $media = $programme->getFirstMedia('featured_image');
-    $paths = collect($media->getGeneratedConversions()->keys()->push('original'))
+    $pathsFor = fn ($media) => collect($media->getGeneratedConversions()->keys()->push('original'))
         ->map(fn ($conversion) => $conversion === 'original' ? $media->getPath() : $media->getPath($conversion));
+
+    // Programme::featured_image and Document::file are two different models
+    // and two different media collections -- covering both means a
+    // regression in either the model's registered collection or the
+    // purge command's model list would actually be caught here.
+    $programme = Programme::whereHas('media')->firstOrFail();
+    $document = Document::whereHas('media')->firstOrFail();
+
+    $paths = $pathsFor($programme->getFirstMedia('featured_image'))
+        ->merge($pathsFor($document->getFirstMedia('file')));
 
     // Every one of the original + its conversions must actually exist on disk
     // before the purge, otherwise this test would prove nothing.
