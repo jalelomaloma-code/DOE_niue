@@ -195,3 +195,142 @@ it('rejects a published status from an editor at the server, but allows it from 
     expect(Page::where('slug', 'manager-published-page')->first()?->status)
         ->toBe(\App\Enums\ContentStatus::Published);
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * CMS-write vs router-read agreement.
+ *
+ * Every test below exists because the failure it prevents is invisible: the
+ * CMS lists the page as Published, the site returns 404, and nothing is
+ * logged. The reserved-slug rule alone did not close these -- it matched
+ * Page::RESERVED_SLUGS exactly, while the catch-all's lookahead is
+ * prefix-based and its charset is narrower than "any string".
+ * ---------------------------------------------------------------------------
+ */
+
+it('rejects a slug that merely starts with a route-excluded prefix, and proves the router could not have served it', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    foreach (Page::ROUTE_EXCLUDED_PREFIXES as $prefix) {
+        // "administration" is an entirely plausible About-Us child for a
+        // government department, and it starts with "admin".
+        $slug = $prefix.'istration-office';
+
+        Livewire::test(CreatePage::class)
+            ->fillForm(['title' => 'Prefixed '.$prefix, 'slug' => $slug])
+            ->call('create')
+            ->assertHasFormErrors(['slug']);
+
+        expect(Page::where('slug', $slug)->exists())->toBeFalse();
+
+        // The other half, and the reason this test cannot drift: seed the row
+        // directly, bypassing the form, and confirm the router really does
+        // refuse it. If someone relaxes the form rule without relaxing the
+        // route (or the reverse), one of these two halves fails.
+        $seeded = Page::factory()->create(['title' => 'Seeded '.$prefix, 'slug' => $slug]);
+
+        $this->withoutVite()->get('/'.$seeded->path)->assertNotFound();
+    }
+});
+
+it('rejects a slug with characters the route cannot match', function ($slug) {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    Livewire::test(CreatePage::class)
+        ->fillForm(['title' => 'Charset Probe', 'slug' => $slug])
+        ->call('create')
+        ->assertHasFormErrors(['slug']);
+
+    expect(Page::where('slug', $slug)->exists())->toBeFalse();
+})->with([
+    'uppercase' => 'Our-Work',
+    'underscore' => 'about_us',
+    'space' => 'about us',
+    'slash' => 'about/us',
+    'accent' => 'niuē',
+]);
+
+it('rejects a third level of nesting: a parent that already has a parent', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $section = Page::factory()->create(['slug' => 'our-work', 'parent_id' => null]);
+    $child = Page::factory()->create(['slug' => 'environment-programmes', 'parent_id' => $section->id]);
+
+    Livewire::test(CreatePage::class)
+        ->fillForm(['title' => 'Coral Watch', 'slug' => 'coral-watch', 'parent_id' => $child->id])
+        ->call('create')
+        ->assertHasFormErrors(['parent_id']);
+
+    expect(Page::where('slug', 'coral-watch')->exists())->toBeFalse();
+});
+
+/*
+ * The review prescribed only the "parent already has a parent" direction.
+ * Depth is reachable from the other end too: give a parent to a page that
+ * already has children of its own and those children land three segments
+ * deep, with no warning and no error, because the cascade in Page::booted()
+ * silently recomputes their paths.
+ */
+it('rejects giving a parent to a page that already has children of its own', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $topLevel = Page::factory()->create(['slug' => 'our-work', 'parent_id' => null]);
+    Page::factory()->create(['slug' => 'environment-programmes', 'parent_id' => $topLevel->id]);
+
+    $newSection = Page::factory()->create(['slug' => 'about', 'parent_id' => null]);
+
+    Livewire::test(EditPage::class, ['record' => $topLevel->getKey()])
+        ->fillForm(['parent_id' => $newSection->id])
+        ->call('save')
+        ->assertHasFormErrors(['parent_id']);
+
+    expect($topLevel->fresh()->parent_id)->toBeNull();
+});
+
+/*
+ * The part that actually proves the two ends agree. A validation test that
+ * never touches the router would drift again, which is how this bug got in.
+ * Everything here goes in through the real Filament form and comes back out
+ * through the real route.
+ */
+it('serves every slug shape the CMS accepts, through the real router', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $accepted = ['about', 'our-work', 'waste-and-recycling', 'a', 'plan-2030', '2030-review'];
+
+    foreach ($accepted as $slug) {
+        Livewire::test(CreatePage::class)
+            ->fillForm([
+                'title' => 'Accepted '.$slug,
+                'slug' => $slug,
+                'status' => 'published',
+                'published_at' => now()->subDay(),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $page = Page::where('slug', $slug)->firstOrFail();
+
+        $this->withoutVite()->get('/'.$page->path)->assertOk();
+    }
+
+    // And the two-level case the catch-all's optional second segment exists
+    // for -- created through the form, parent and all.
+    $parent = Page::where('slug', 'about')->firstOrFail();
+
+    Livewire::test(CreatePage::class)
+        ->fillForm([
+            'title' => 'Our Mandate',
+            'slug' => 'mandate',
+            'parent_id' => $parent->id,
+            'status' => 'published',
+            'published_at' => now()->subDay(),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $child = Page::where('slug', 'mandate')->firstOrFail();
+
+    expect($child->path)->toBe('about/mandate');
+    $this->withoutVite()->get('/'.$child->path)->assertOk();
+});

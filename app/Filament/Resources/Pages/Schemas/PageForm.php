@@ -28,11 +28,38 @@ class PageForm
                     ->live(onBlur: true)
                     ->afterStateUpdated(fn ($state, $set) => $set('slug', Str::slug($state))),
 
+                // Every rule here exists because the alternative is a page the
+                // CMS lists as Published that 404s on the site with nothing
+                // logged. The route's constraint (Page::pathRoutePattern()) is
+                // the thing being mirrored — see Page's constants.
                 TextInput::make('slug')->required()->maxLength(255)
                     ->unique(ignoreRecord: true)
+                    ->helperText('Lower-case letters, numbers and hyphens only. This becomes part of the page address.')
+                    ->regex('/^'.Page::SLUG_PATTERN.'$/')
+                    ->validationMessages([
+                        'regex' => 'The slug can only use lower-case letters, numbers and hyphens. Capital letters, spaces and underscores are not allowed, because the website address cannot contain them.',
+                    ])
                     ->rule(fn () => function (string $attribute, $value, $fail) {
+                        if (! is_string($value)) {
+                            return;
+                        }
+
                         if (in_array($value, Page::RESERVED_SLUGS, true)) {
                             $fail("The slug \"{$value}\" is reserved and would conflict with a system route.");
+
+                            return;
+                        }
+
+                        // Prefix, not equality: the catch-all's lookahead is
+                        // prefix-based, so "administration" and
+                        // "storage-facilities" are just as unreachable as
+                        // "admin" and "storage".
+                        foreach (Page::ROUTE_EXCLUDED_PREFIXES as $prefix) {
+                            if (str_starts_with($value, $prefix)) {
+                                $fail("The slug \"{$value}\" starts with \"{$prefix}\", which is reserved for the system. The website could not open this page. Please choose a slug that begins with a different word.");
+
+                                return;
+                            }
                         }
                     }),
 
@@ -71,6 +98,32 @@ class PageForm
                                 $seen[$ancestorId] = true;
 
                                 $ancestorId = Page::query()->whereKey($ancestorId)->value('parent_id');
+                            }
+                        };
+                    })
+                    // Depth ceiling. The catch-all route serves Page::MAX_DEPTH
+                    // segments; a grandchild's computed path has three and
+                    // 404s silently. Two directions get you there, and the
+                    // Select offers every page, so both are checked:
+                    //   (a) picking a parent that already has a parent;
+                    //   (b) giving a parent to a page that has children of its
+                    //       own, which pushes those children down a level.
+                    // (b) is not reachable on create -- a new page has no
+                    // children yet -- but is trivially reachable on edit.
+                    ->rule(function (?Page $record) {
+                        return function (string $attribute, $value, $fail) use ($record) {
+                            if ($value === null) {
+                                return;
+                            }
+
+                            if (Page::query()->whereKey($value)->value('parent_id') !== null) {
+                                $fail('The website supports two levels of pages, so the parent must be a top-level page. The page you chose already sits under another page.');
+
+                                return;
+                            }
+
+                            if ($record?->exists && $record->children()->exists()) {
+                                $fail('The website supports two levels of pages. This page already has pages beneath it, so it must stay at the top level. Move those pages elsewhere first.');
                             }
                         };
                     }),

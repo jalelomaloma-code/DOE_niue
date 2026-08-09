@@ -24,6 +24,52 @@ class Page extends Model
      */
     public const RESERVED_SLUGS = ['admin', 'storage', 'livewire', 'api', 'login', 'logout'];
 
+    /**
+     * Path prefixes the catch-all route refuses to match.
+     *
+     * The route's negative lookahead is prefix-based, not exact: `/admin` and
+     * `/administration` are both excluded from the catch-all. RESERVED_SLUGS
+     * above is an exact-match list, so on its own it lets an editor save
+     * `administration`, see it listed as Published in the CMS, and get an
+     * unlogged 404 on the site. PageForm validates against this constant with
+     * str_starts_with(), and routes/web.php builds the route pattern from it,
+     * so the two can no longer drift apart.
+     */
+    public const ROUTE_EXCLUDED_PREFIXES = ['admin', 'storage', 'livewire'];
+
+    /**
+     * The character set a single path segment may use, as a bare regex
+     * fragment. Anything outside it (uppercase, underscores, spaces, accents)
+     * fails the catch-all and 404s, so PageForm rejects it on the slug field.
+     */
+    public const SLUG_PATTERN = '[a-z0-9\-]+';
+
+    /**
+     * How many path segments the catch-all serves: a top-level page and one
+     * level of child. A grandchild's computed `path` has three segments and
+     * would 404, so PageForm refuses to create one.
+     *
+     * pathRoutePattern() below derives the number of optional segments from
+     * this. PageForm's parent_id rules, however, encode depth 2 structurally
+     * ("the parent must not itself have a parent", "a page with children must
+     * stay top-level") — raising this constant would widen the route but NOT
+     * the form, so revisit those two rules if it ever changes.
+     */
+    public const MAX_DEPTH = 2;
+
+    /**
+     * The catch-all route's `where` constraint, derived from the constants
+     * above so that routes/web.php and PageForm's validation cannot disagree.
+     */
+    public static function pathRoutePattern(): string
+    {
+        $excluded = implode('|', self::ROUTE_EXCLUDED_PREFIXES);
+        $segment = self::SLUG_PATTERN;
+        $extraSegments = str_repeat("(\/{$segment})?", self::MAX_DEPTH - 1);
+
+        return "^(?!{$excluded}){$segment}{$extraSegments}$";
+    }
+
     protected $fillable = [
         'title', 'slug', 'parent_id', 'intro', 'content', 'sort_order',
         'show_in_section_nav', 'status', 'published_at', 'seo_title',
@@ -95,8 +141,12 @@ class Page extends Model
      * ancestor produces a longer `path` on every pass, so `wasChanged('path')`
      * never goes false and the cascade re-enters itself until the process
      * runs out of memory or `path` overflows its column. A brand-new page
-     * (no id yet) cannot be its own ancestor, so this only walks the chain
-     * for existing pages whose parent_id is actually changing hands.
+     * (no id yet) cannot be its own ancestor, so it is skipped; every other
+     * save walks the chain. This is NOT gated on isDirty('parent_id') — a
+     * save that leaves parent_id alone still walks, and so does each child
+     * re-saved by the `saved` cascade, which makes a deep rename O(depth^2)
+     * queries. Left unconditional deliberately: it is always safe, and at
+     * two levels of nesting and a few dozen pages the cost is immaterial.
      */
     protected function guardAgainstCyclicParent(): void
     {

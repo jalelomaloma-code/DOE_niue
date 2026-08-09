@@ -15,9 +15,15 @@ Route::get('/our-work/environment-programmes/{slug}', [\App\Http\Controllers\Pro
 
 /*
  * Page catch-all. MUST be registered last — it matches any path.
- * /admin, /storage and /livewire are excluded by pattern; reserved slugs
- * are additionally rejected at CMS save time (Page::RESERVED_SLUGS).
+ *
+ * The pattern is built from Page::ROUTE_EXCLUDED_PREFIXES, Page::SLUG_PATTERN
+ * and Page::MAX_DEPTH rather than written out here, because PageForm validates
+ * editor input against those same constants. When the two were separate
+ * literals they disagreed: the route excludes anything *starting with*
+ * admin/storage/livewire while Page::RESERVED_SLUGS only matched them exactly,
+ * so a page slugged `administration` saved cleanly, showed as Published, and
+ * 404ed silently. Change the ceiling or the charset in Page, not here.
  */
 Route::get('/{path}', [\App\Http\Controllers\PageController::class, 'show'])
-    ->where('path', '^(?!admin|storage|livewire)[a-z0-9\-]+(\/[a-z0-9\-]+)?$')
+    ->where('path', \App\Models\Page::pathRoutePattern())
     ->name('pages.show');
