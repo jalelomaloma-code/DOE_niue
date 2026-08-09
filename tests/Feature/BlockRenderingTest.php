@@ -60,3 +60,45 @@ it('renders nothing when blocks are null', function () {
 
     expect(trim($html))->toBe('');
 });
+
+it('renders an image block with its alt text and caption', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'image', 'data' => [
+            'url' => '/storage/demo.jpg',
+            'alt' => 'Coastline at dawn',
+            'caption' => 'The northern coast',
+        ]],
+    ]]);
+
+    expect($html)->toContain('alt="Coastline at dawn"')
+        ->and($html)->toContain('The northern coast');
+});
+
+it('renders a callout with its tone', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'callout', 'data' => ['heading' => 'Note', 'body' => 'Collection changes', 'tone' => 'warning']],
+    ]]);
+
+    expect($html)->toContain('Note')->and($html)->toContain('Collection changes');
+});
+
+it('renders a card grid and omits links for cards without a url', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'card_grid', 'data' => ['heading' => 'Services', 'cards' => [
+            ['title' => 'Household', 'text' => 'Weekly collection', 'url' => '/waste-and-recycling'],
+            ['title' => 'Green waste', 'text' => 'Monthly collection', 'url' => null],
+        ]]],
+    ]]);
+
+    expect($html)->toContain('Household')
+        ->and($html)->toContain('/waste-and-recycling')
+        ->and($html)->toContain('Green waste');
+});
+
+it('renders an image block without a caption', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'image', 'data' => ['url' => '/storage/demo.jpg', 'alt' => 'Reef']],
+    ]]);
+
+    expect($html)->toContain('alt="Reef"');
+});
