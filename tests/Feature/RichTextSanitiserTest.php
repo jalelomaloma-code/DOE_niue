@@ -110,6 +110,111 @@ it('keeps href on a link -- the one attribute the allowlist permits', function (
         ->toContain('href="/waste-and-recycling"');
 });
 
+/*
+ * ---------------------------------------------------------------------------
+ * Attribute EXCLUSIVITY. The test above proves href is included; on its own
+ * that says nothing about what else survives, and for a long time a great deal
+ * else did. allowSafeElements() grants every attribute W3CReference::ATTRIBUTES
+ * marks safe -- around 250 of them, `id`, `title`, `target`, `src`, `alt`,
+ * `rel`, `face` among them -- on every safe element. Only `class`, `style`,
+ * `hidden`, `contenteditable` and the `on*` handlers are excluded there.
+ *
+ * These tests fix the spec's actual policy in place: "strips every attribute
+ * except `href` on links". Each one was confirmed to fail against the previous
+ * config (allowSafeElements() with no attribute reset) -- the fixtures below
+ * are attributes that genuinely came through, not attributes the parser was
+ * never going to emit.
+ * ---------------------------------------------------------------------------
+ */
+it('strips id, which would otherwise collide with the layout landmark ids', function () {
+    // resources/views/components/layouts/public.blade.php gives <main> id="main"
+    // and the skip link points at #main; header.blade.php owns #nav-disclosure,
+    // #menu-toggle and #mobile-nav. A body paragraph carrying id="main" makes
+    // "Skip to main content" land on editor prose instead of the main landmark,
+    // and duplicate ids break any aria-labelledby wiring pointed at them.
+    $clean = RichTextSanitiser::sanitise('<p id="main">Body</p>');
+
+    expect($clean)->not->toContain('id=')
+        ->and($clean)->toContain('<p>Body</p>');
+});
+
+it('strips title and target from a link, leaving href alone', function () {
+    // target="_blank" opens a government page's links into an uncontrolled new
+    // context (and without rel=noopener, which is also not grantable here);
+    // title= is an accessibility trap, invisible to keyboard and touch users.
+    $clean = RichTextSanitiser::sanitise('<a href="/contact" title="Tooltip" target="_blank">Contact</a>');
+
+    expect($clean)->not->toContain('title=')
+        ->and($clean)->not->toContain('target=')
+        ->and($clean)->toContain('href="/contact"')
+        ->and($clean)->toContain('Contact');
+});
+
+it('strips a remote image, so body content cannot make a third-party request', function () {
+    // allowRelativeMedias() is never called, but allowedMediaSchemes defaults to
+    // http/https/data -- so before the attribute reset an absolute <img src>
+    // survived intact. That is a third-party request issued from a government
+    // page (a tracking pixel needs nothing more), and it routes around the
+    // alt-text requirement every other image path on this site enforces:
+    // PageForm's `image` block and the featured-image uploads both make alt
+    // required. Images belong to those paths, not to pasted body HTML.
+    $clean = RichTextSanitiser::sanitise(
+        '<p>Before</p><img src="https://tracker.example/pixel.gif" alt="x"><p>After</p>'
+    );
+
+    expect($clean)->not->toContain('tracker.example')
+        ->and($clean)->not->toContain('src=')
+        ->and($clean)->not->toContain('<img')
+        ->and($clean)->toContain('Before')
+        ->and($clean)->toContain('After');
+});
+
+it('strips presentational attributes carried in by a Word paste', function () {
+    // The scenario the sanitiser exists for. `face` on <font> and `lang` on
+    // <span> are both marked safe by the W3C reference, so both survived.
+    $clean = RichTextSanitiser::sanitise(
+        '<div class="WordSection1"><p class="MsoNormal">'
+        .'<b><span lang="EN-NZ"><font face="Calibri">Annual report</font></span></b></p></div>'
+    );
+
+    expect($clean)->not->toContain('face=')
+        ->and($clean)->not->toContain('lang=')
+        ->and($clean)->not->toContain('class=')
+        ->and($clean)->toContain('Annual report');
+});
+
+/*
+ * The counterweight. Narrowing attributes must not narrow ELEMENTS: the
+ * library's default action for an unconfigured element is Drop, which deletes
+ * the element's TEXT as well as its tag. Every button on Filament's default
+ * RichEditor toolbar (see RichEditor::getDefaultToolbarButtons()) is
+ * represented here, so an over-eager future narrowing of the element set shows
+ * up as a failure rather than as content quietly disappearing from a page.
+ */
+it('keeps every element the RichEditor toolbar can emit, and the text inside unknown wrappers', function () {
+    $clean = RichTextSanitiser::sanitise(
+        '<p><strong>bold</strong><em>italic</em><u>under</u><s>strike</s>'
+        .'<sub>sub</sub><sup>sup</sup><a href="/x">link</a></p>'
+        .'<h3>heading three</h3><h4>heading four</h4>'
+        .'<blockquote>quoted</blockquote><pre><code>code block</code></pre>'
+        .'<ul><li>bullet</li></ul><ol><li>numbered</li></ol>'
+        .'<table><tbody><tr><td>cell</td></tr></tbody></table>'
+        .'<div><span>wrapped text</span></div><hr><br>'
+    );
+
+    foreach (['<strong>', '<em>', '<u>', '<s>', '<sub>', '<sup>', '<a href="/x">',
+        '<h3>', '<h4>', '<blockquote>', '<pre>', '<code>', '<ul>', '<ol>', '<li>',
+        '<table>', '<tr>', '<td>', '<div>', '<span>'] as $tag) {
+        expect($clean)->toContain($tag);
+    }
+
+    foreach (['bold', 'italic', 'under', 'strike', 'sub', 'sup', 'link', 'heading three',
+        'heading four', 'quoted', 'code block', 'bullet', 'numbered', 'cell',
+        'wrapped text'] as $text) {
+        expect($clean)->toContain($text);
+    }
+});
+
 it('returns null unchanged', function () {
     expect(RichTextSanitiser::sanitise(null))->toBeNull();
 });
