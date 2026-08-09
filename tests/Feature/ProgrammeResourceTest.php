@@ -7,6 +7,7 @@ use App\Filament\Resources\Programmes\Pages\EditProgramme;
 use App\Filament\Resources\Programmes\Pages\ListProgrammes;
 use App\Models\Programme;
 use App\Models\User;
+use App\Support\RichTextSanitiser;
 use Filament\Forms\Components\Select;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -219,4 +220,57 @@ it('rejects a published status from an editor at the server, but allows it from 
 
     expect(Programme::where('slug', 'admin-published-programme')->first()?->status)
         ->toBe(ContentStatus::Published);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Long bodies. RichTextSanitiser used to inherit HtmlSanitizerConfig's 20,000
+ * byte input cap, which sanitizeFor() applies with a byte-offset substr() and
+ * no error of any kind -- and which returns '' outright when the cut lands
+ * inside a multibyte character. A department officer pasting a long report out
+ * of Word is the scenario the sanitiser exists for, and 20 KB is not much of a
+ * report. The cap is gone (RichTextSanitiserTest covers the sanitiser itself);
+ * these two prove the replacement guard behaves, end to end, through the real
+ * form and the real model mutator.
+ * ---------------------------------------------------------------------------
+ */
+it('stores a body far past the old 20 KB cap intact, rather than truncating it', function () {
+    Livewire::actingAs(programmePanelAdmin())
+        ->test(CreateProgramme::class)
+        ->fillForm([
+            'title' => 'Long Body Programme',
+            'slug' => 'long-body-programme',
+            'summary' => 'A programme with a long pasted body.',
+            // Well past 20,000 bytes, with a marker beyond the old cut point
+            // and a macron on the boundary side of it.
+            'body' => '<p>'.str_repeat('kaiao ', 5_000).'</p><p>Final section, Niu&#275;.</p>',
+            'status' => ContentStatus::Draft->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $body = Programme::where('slug', 'long-body-programme')->firstOrFail()->body;
+
+    expect($body)->not->toBe('')
+        ->and($body)->toContain('Final section')
+        ->and(strlen($body))->toBeGreaterThan(25_000);
+});
+
+it('reports an over-long body as a validation error instead of losing the overflow', function () {
+    Livewire::actingAs(programmePanelAdmin())
+        ->test(CreateProgramme::class)
+        ->fillForm([
+            'title' => 'Oversize Body Programme',
+            'slug' => 'oversize-body-programme',
+            'summary' => 'A programme whose body exceeds the editor ceiling.',
+            // One character past the ceiling. Filament measures the Tiptap
+            // plain-text length, not the HTML length, so the tags around it do
+            // not count -- see RichTextSanitiser::MAX_LENGTH.
+            'body' => '<p>'.str_repeat('a', RichTextSanitiser::MAX_LENGTH + 1).'</p>',
+            'status' => ContentStatus::Draft->value,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['body']);
+
+    expect(Programme::where('slug', 'oversize-body-programme')->exists())->toBeFalse();
 });

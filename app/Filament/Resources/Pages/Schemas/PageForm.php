@@ -134,7 +134,14 @@ class PageForm
                 Builder::make('content')->blocks([
                     Builder\Block::make('rich_text')->label('Text')->schema([
                         TextInput::make('heading')->maxLength(255),
+                        // maxLength for the same reason as the three model-level
+                        // bodies (Programme, NewsArticle, Project): the
+                        // sanitiser's own byte cap truncated silently and could
+                        // blank the field outright on a multibyte boundary, so
+                        // it was removed and the ceiling moved somewhere that
+                        // reports. See RichTextSanitiser::MAX_LENGTH.
                         RichEditor::make('body')->required()
+                            ->maxLength(RichTextSanitiser::MAX_LENGTH)
                             ->dehydrateStateUsing(fn (?string $state) => RichTextSanitiser::sanitise($state)),
                     ]),
                     Builder\Block::make('image')->schema([

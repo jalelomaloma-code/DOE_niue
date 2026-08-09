@@ -49,6 +49,31 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
  */
 class RichTextSanitiser
 {
+    /**
+     * Editor-facing ceiling on a single rich-text field.
+     *
+     * Passed to RichEditor::maxLength() by PageForm, ProgrammeForm,
+     * NewsArticleForm and ProjectForm. Note what Filament measures: it feeds the
+     * value through Tiptap and counts the characters of the resulting PLAIN
+     * TEXT (see RichEditor::getLengthValidationRules()), so this is a ceiling on
+     * how much an officer wrote, not on how many bytes of markup a Word paste
+     * dragged along with it. That is the right unit for a message an officer has
+     * to act on — "your text is too long" is actionable, "your HTML is too long"
+     * is not — but it means this constant is NOT a replacement byte guard.
+     *
+     * It does not need to be one. Request size was always bounded before any of
+     * this by PHP's post_max_size, which rejects an oversized submission at the
+     * HTTP layer with a visible failure. The 20,000-byte cap this replaces
+     * (HtmlSanitizerConfig::$maxInputLength, dropped in config() below) did not
+     * reject anything: it truncated, silently, and could blank a body outright.
+     * A guard that destroys the officer's work to protect the parser is not a
+     * guard on a content site.
+     *
+     * 200,000 characters is roughly 35,000 words — far past any department page,
+     * far short of what a longText column holds, so the database never decides.
+     */
+    public const MAX_LENGTH = 200_000;
+
     public static function sanitise(?string $html): ?string
     {
         if ($html === null) {
@@ -63,7 +88,28 @@ class RichTextSanitiser
         $config = (new HtmlSanitizerConfig)
             ->allowSafeElements()
             ->allowRelativeLinks()
-            ->allowLinkSchemes(['http', 'https', 'mailto']);
+            ->allowLinkSchemes(['http', 'https', 'mailto'])
+            // No byte cap. HtmlSanitizer::sanitizeFor() enforces
+            // $maxInputLength (20,000 by default) with a BYTE-offset substr(),
+            // then runs isValidUtf8() on the result and returns '' if it fails.
+            // Both outcomes are silent, and both are wrong for a body column:
+            //   * over 20 KB, the body is cut mid-content on save with no error
+            //     and no validation message;
+            //   * if the cut lands inside a multibyte sequence -- one macron in
+            //     a Niuean place name is enough -- the ENTIRE body becomes ''.
+            // That was tolerable while this only ran per rich-text block on
+            // Page. It is not now that it runs on whole Programme, NewsArticle
+            // and Project bodies, which is exactly where a long Word paste goes.
+            //
+            // -1 is the only value that removes the wipe: any finite cap still
+            // truncates, and can still land mid-character. What is given up is
+            // a size ceiling on the parse; what replaces it is PHP's
+            // post_max_size at the HTTP layer (which rejects rather than
+            // truncates) plus self::MAX_LENGTH on the editors, which reports a
+            // validation error the officer can act on. Writers that bypass the
+            // forms — seeders, imports, tinker — are developer-run, and for
+            // those silent data loss is by far the worse of the two failures.
+            ->withMaxInputLength(-1);
 
         // Spec section 6: "strips every attribute except `href` on links".
         //

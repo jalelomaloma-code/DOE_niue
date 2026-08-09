@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Programmes\Schemas;
 
 use App\Enums\ContentStatus;
+use App\Support\RichTextSanitiser;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -32,7 +33,13 @@ class ProgrammeForm
                     ->rows(3)
                     ->maxLength(300)
                     ->columnSpanFull(),
+                // The ceiling has to live here, not in RichTextSanitiser: the
+                // sanitiser's own cap truncated silently (and could blank the
+                // body outright on a multibyte boundary), so it was removed.
+                // A `max:` rule is the version of that guard an officer can
+                // see and respond to. See RichTextSanitiser::MAX_LENGTH.
                 RichEditor::make('body')
+                    ->maxLength(RichTextSanitiser::MAX_LENGTH)
                     ->columnSpanFull(),
                 SpatieMediaLibraryFileUpload::make('featured_image')
                     ->collection('featured_image')

@@ -218,3 +218,53 @@ it('keeps every element the RichEditor toolbar can emit, and the text inside unk
 it('returns null unchanged', function () {
     expect(RichTextSanitiser::sanitise(null))->toBeNull();
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * Input length. HtmlSanitizer::sanitizeFor() truncates its input with a
+ * BYTE-offset substr() at HtmlSanitizerConfig::$maxInputLength (20,000 by
+ * default) and then, a few lines later, returns '' if the result is not valid
+ * UTF-8. Both halves are silent: no exception, no validation message, nothing
+ * logged.
+ *
+ * That was survivable while the sanitiser only ran per rich-text BLOCK on
+ * Page. It stopped being survivable when it started running on whole
+ * Programme, NewsArticle and Project bodies, which is exactly where a
+ * department officer pastes a long report out of Word -- the scenario the
+ * sanitiser exists for, and one that passes 20 KB without effort.
+ * ---------------------------------------------------------------------------
+ */
+it('keeps a body far longer than the library default 20 KB input cap', function () {
+    $long = '<p>'.str_repeat('a', 25_000).'</p><p>Closing paragraph</p>';
+
+    $clean = RichTextSanitiser::sanitise($long);
+
+    // The tail is what proves it: with the default cap the input was cut at
+    // byte 20,000 and everything after it -- here the closing paragraph --
+    // was gone from the saved record with no warning.
+    expect($clean)->toContain('Closing paragraph')
+        ->and(strlen($clean))->toBeGreaterThan(25_000);
+});
+
+it('does not blank a body when a multibyte character straddles the byte cap', function () {
+    // Constructed to land exactly on the boundary: '<p>' is 3 bytes and 19,996
+    // 'a's take the offset to 19,999, so the following U+0113 (0xC4 0x93, two
+    // bytes) starts at index 19,999. substr($input, 0, 20_000) keeps 0xC4 and
+    // discards 0x93, isValidUtf8() then fails, and sanitizeFor() returns ''.
+    // Not truncation -- total loss of the entire body.
+    $body = '<p>'.str_repeat('a', 19_996)."\u{0113}".' and the rest of the report</p>';
+
+    // The boundary is real, and the cut really would be invalid UTF-8. Without
+    // these two the test could pass on a fixture that never straddled anything.
+    expect(strlen('<p>'.str_repeat('a', 19_996)))->toBe(19_999)
+        // preg_match() returns false, not 0, on a string containing invalid
+        // UTF-8 -- which is precisely the check HtmlSanitizer::isValidUtf8()
+        // makes before returning ''.
+        ->and(preg_match('//u', substr($body, 0, 20_000)))->toBeFalse();
+
+    $clean = RichTextSanitiser::sanitise($body);
+
+    expect($clean)->not->toBe('')
+        ->and($clean)->toContain('and the rest of the report')
+        ->and($clean)->toContain("\u{0113}");
+});
