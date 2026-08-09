@@ -182,6 +182,39 @@ class PageForm
                 Toggle::make('show_in_section_nav')->default(true)
                     ->helperText('Show this page in its section listing. Does not affect the main menu.'),
 
+                // Spec 2 criterion 2 requires the Department to be able to
+                // reorder pages without a developer, and until this field
+                // existed there was no way to: every CMS-created page took the
+                // column default of 0 and PagesTable showed sort_order
+                // read-only.
+                //
+                // Deliberately a number field rather than ->reorderable() on
+                // PagesTable, which is what the flat tables (NavigationItems,
+                // TeamMembers, QuickLinks, the two category resources) use.
+                // Two reasons, both from Filament's own behaviour:
+                //   1. While reorder mode is on, Filament forces the table sort
+                //      to the reorder column (CanSortRecords::applySortingToTableQuery),
+                //      discarding PagesTable's ->defaultSort('path') -- and
+                //      `path` is the only thing that renders that table as a
+                //      readable tree rather than a scrambled flat list.
+                //   2. Worse, reorderTable() renumbers every dragged row 1..N
+                //      across the whole result set with no notion of parent_id.
+                //      For Pages, sort_order is an ordinal WITHIN a sibling
+                //      group, so one drag on the unfiltered table would rewrite
+                //      the order of every section at once, breaking today's
+                //      all-zero ties in whatever arbitrary order the database
+                //      returned. That is safe on a flat list, where "global
+                //      1..N" and "position in the group" are the same number;
+                //      Pages is the one hierarchical table, which is exactly
+                //      why it is the one that must not drag.
+                TextInput::make('sort_order')
+                    ->label('Order in section')
+                    ->numeric()
+                    ->integer()
+                    ->required()
+                    ->default(0)
+                    ->helperText('Orders this page against the other pages in the same section: lower numbers appear first. Pages outside this section are unaffected.'),
+
                 Select::make('status')
                     ->options(function (): array {
                         $options = ContentStatus::options();

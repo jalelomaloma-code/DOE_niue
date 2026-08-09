@@ -25,6 +25,7 @@ class PagesTable
                 TextColumn::make('parent.title')
                     ->searchable(),
                 TextColumn::make('sort_order')
+                    ->label('Order in section')
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('show_in_section_nav')
@@ -60,6 +61,15 @@ class PagesTable
             // "our-work" then "our-work/waste-and-recycling") and is a single
             // indexed column, unlike sorting by id which scatters a tree
             // across insertion order.
+            //
+            // Deliberately NOT ->reorderable('sort_order'), unlike every other
+            // sort_order table here. Filament forces the table sort to the
+            // reorder column while reorder mode is on, which throws away the
+            // `path` tree above, and reorderTable() renumbers the dragged rows
+            // 1..N with no notion of parent_id -- and on Pages sort_order is a
+            // per-sibling ordinal, not a global one. Reordering is done on the
+            // page's own edit form instead; see the "Order in section" field
+            // in PageForm for the long version.
             ->defaultSort('path')
             ->filters([
                 //

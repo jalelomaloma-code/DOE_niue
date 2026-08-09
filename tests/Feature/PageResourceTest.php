@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ContentStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Filament\Resources\Pages\Pages\EditPage;
@@ -193,7 +194,85 @@ it('rejects a published status from an editor at the server, but allows it from 
         ->assertHasNoFormErrors();
 
     expect(Page::where('slug', 'manager-published-page')->first()?->status)
-        ->toBe(\App\Enums\ContentStatus::Published);
+        ->toBe(ContentStatus::Published);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Reordering. Spec 2 success criterion 2 requires the Department to be able to
+ * REORDER a page through the CMS without a developer. `sort_order` is the
+ * column Page::children() orders by, and PageController feeds that relation to
+ * the "In this section" list, so these tests drive the CMS form and then read
+ * the rendered section landing page. Asserting the field exists on the form
+ * would prove nothing -- the field has to actually move the page on the site.
+ * ---------------------------------------------------------------------------
+ */
+
+it('reorders a section listing from the CMS, and the site reflects the new order', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $section = Page::factory()->create(['title' => 'Our Work', 'slug' => 'our-work', 'parent_id' => null]);
+    $waste = Page::factory()->create([
+        'title' => 'Waste And Recycling', 'slug' => 'waste-and-recycling',
+        'parent_id' => $section->id, 'sort_order' => 0,
+    ]);
+    $climate = Page::factory()->create([
+        'title' => 'Climate Resilience', 'slug' => 'climate-resilience',
+        'parent_id' => $section->id, 'sort_order' => 1,
+    ]);
+
+    // Baseline, so the assertion below is a change and not a coincidence.
+    $before = $this->withoutVite()->get('/our-work')->assertOk()->getContent();
+    expect(strpos($before, 'Waste And Recycling'))->toBeLessThan(strpos($before, 'Climate Resilience'));
+
+    // The only route the Department has: the page's own edit form.
+    Livewire::test(EditPage::class, ['record' => $waste->getKey()])
+        ->fillForm(['sort_order' => 5])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($waste->fresh()->sort_order)->toBe(5);
+
+    $after = $this->withoutVite()->get('/our-work')->assertOk()->getContent();
+    expect(strpos($after, 'Climate Resilience'))->toBeLessThan(strpos($after, 'Waste And Recycling'));
+});
+
+it('sets a new page\'s position at creation time, not only afterwards', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $section = Page::factory()->create(['title' => 'Our Work', 'slug' => 'our-work', 'parent_id' => null]);
+    Page::factory()->create([
+        'title' => 'Waste And Recycling', 'slug' => 'waste-and-recycling',
+        'parent_id' => $section->id, 'sort_order' => 5,
+    ]);
+
+    Livewire::test(CreatePage::class)
+        ->fillForm([
+            'title' => 'Climate Resilience',
+            'slug' => 'climate-resilience',
+            'parent_id' => $section->id,
+            'sort_order' => 1,
+            'status' => 'published',
+            'published_at' => now()->subDay(),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Page::where('slug', 'climate-resilience')->firstOrFail()->sort_order)->toBe(1);
+
+    $html = $this->withoutVite()->get('/our-work')->assertOk()->getContent();
+    expect(strpos($html, 'Climate Resilience'))->toBeLessThan(strpos($html, 'Waste And Recycling'));
+});
+
+it('rejects a non-numeric position rather than silently storing zero', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    Livewire::test(CreatePage::class)
+        ->fillForm(['title' => 'Ordered', 'slug' => 'ordered', 'sort_order' => 'first'])
+        ->call('create')
+        ->assertHasFormErrors(['sort_order']);
+
+    expect(Page::where('slug', 'ordered')->exists())->toBeFalse();
 });
 
 /*
