@@ -7,7 +7,9 @@
     // regrouped down to six top-level items whose children now live on each
     // section's own landing page rather than in primary nav, so the same
     // split can no longer be derived from $navigation at all — it collapses
-    // into a single database-driven "Quick Links" column instead.
+    // into a single database-driven "Site Links" column instead. Not titled
+    // "Quick Links": that heading is already used, with different content
+    // (the QuickLink-backed homepage cards), further up the same page.
     $legalPages = \App\Models\Page::published()->whereIn('slug', ['privacy', 'terms', 'accessibility'])->orderBy('sort_order')->get();
 
     // The "Government of Niue" column (social links) is deliberately absent:
@@ -41,7 +43,7 @@
         </div>
 
         <div>
-            <p class="text-sm font-semibold uppercase tracking-wide text-white/60">Quick Links</p>
+            <p class="text-sm font-semibold uppercase tracking-wide text-white/60">Site Links</p>
 
             <ul class="mt-4 space-y-1 text-sm text-white/80">
                 @foreach ($navigation as $item)
