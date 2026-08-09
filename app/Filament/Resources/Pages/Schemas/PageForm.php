@@ -121,6 +121,9 @@ class PageForm
                     Builder\Block::make('contact_details')->label('Contact details')->schema([
                         TextInput::make('heading')->maxLength(255),
                     ]),
+                    Builder\Block::make('team_grid')->label('Team grid')->schema([
+                        TextInput::make('heading')->maxLength(255),
+                    ]),
                 ])->collapsible()->blockNumbers(false),
 
                 Toggle::make('show_in_section_nav')->default(true)

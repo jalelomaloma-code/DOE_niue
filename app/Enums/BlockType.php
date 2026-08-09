@@ -11,6 +11,7 @@ enum BlockType: string
     case DocumentsList = 'documents_list';
     case ProgrammesList = 'programmes_list';
     case ContactDetails = 'contact_details';
+    case TeamGrid = 'team_grid';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum BlockType: string
             self::DocumentsList => 'Documents list',
             self::ProgrammesList => 'Programmes list',
             self::ContactDetails => 'Contact details',
+            self::TeamGrid => 'Team grid',
         };
     }
 
