@@ -36,7 +36,12 @@ class PageForm
                         }
                     }),
 
-                Select::make('parent_id')->relationship('parent', 'title')->searchable()->nullable()
+                // ignoreRecord: true excludes the page being edited from its own
+                // parent options -- cheap self-exclusion. Descendants are NOT
+                // filtered out here (Filament has no built-in "exclude subtree"
+                // option); the ->rule() below is what actually catches a
+                // descendant being picked, self or otherwise.
+                Select::make('parent_id')->relationship('parent', 'title', ignoreRecord: true)->searchable()->nullable()
                     // Usability half of the cyclic-parent guard: Page::guardAgainstCyclicParent()
                     // throws a raw InvalidArgumentException from the `saving` model event, and
                     // Filament does not convert arbitrary domain exceptions into inline field
