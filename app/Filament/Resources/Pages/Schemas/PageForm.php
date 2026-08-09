@@ -215,6 +215,14 @@ class PageForm
                     ->default(0)
                     ->helperText('Orders this page against the other pages in the same section: lower numbers appear first. Pages outside this section are unaffected.'),
 
+                // This closure IS the publish control. Filament derives a
+                // server-side `in:` rule from whichever options it returns,
+                // and re-evaluates it per request against the acting user --
+                // so an Editor who posts `published` anyway is rejected by
+                // Laravel's own validation, not by a check further in.
+                // Weaken the mayPublish() test below and the enforcement goes
+                // with it; there is no second line of defence. PagePolicy
+                // deliberately has no publish() ability for this reason.
                 Select::make('status')
                     ->options(function (): array {
                         $options = ContentStatus::options();

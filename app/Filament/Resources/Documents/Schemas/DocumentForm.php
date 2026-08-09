@@ -45,6 +45,14 @@ class DocumentForm
                     ->required(),
                 DatePicker::make('published_date'),
                 Toggle::make('is_featured'),
+                // This closure IS the publish control. Filament derives a
+                // server-side `in:` rule from whichever options it returns,
+                // and re-evaluates it per request against the acting user --
+                // so an Editor who posts `published` anyway is rejected by
+                // Laravel's own validation, not by a check further in.
+                // Weaken the mayPublish() test below and the enforcement goes
+                // with it; there is no second line of defence. DocumentPolicy
+                // deliberately has no publish() ability for this reason.
                 Select::make('status')
                     ->options(function (): array {
                         $options = ContentStatus::options();

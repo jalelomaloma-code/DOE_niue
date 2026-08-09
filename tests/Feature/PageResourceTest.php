@@ -143,31 +143,21 @@ it('lets a page keep an ordinary, non-cyclic parent through the form', function 
     expect($child->fresh()->parent_id)->toBe($parent->id);
 });
 
-// PagePolicy::publish() documents intent -- it mirrors DocumentPolicy,
-// NewsArticlePolicy, ProgrammePolicy and ProjectPolicy -- but nothing in
-// production code actually calls it. It is asserted here for the same
-// reason the sibling resources assert it: as a record of intended ability,
-// not as proof of enforcement. See the test below for what enforces this
-// for real.
-it('reports the publish ability correctly for an editor and a website manager, though nothing calls it', function () {
-    $editor = pageUser(UserRole::Editor);
-    $manager = pageUser(UserRole::WebsiteManager);
-    $page = Page::factory()->create();
-
-    expect($editor->can('publish', $page))->toBeFalse()
-        ->and($manager->can('publish', $page))->toBeTrue();
-});
-
-// The real enforcement is NOT PagePolicy::publish() -- it's the status
-// Select's ->options() closure in PageForm, which derives a server-side
-// `in:` validation rule from whichever options it returns. An Editor never
-// gets `published` in that list, so submitting it anyway fails Laravel's
-// own `in:` rule, not a custom check. Posting the payload directly (rather
-// than only checking the option list, as the "hides the published option"
-// test above does) proves the server-side rule rejects it too -- not just
-// that the UI never offers it. The Website Manager half is what stops this
-// test from passing for the wrong reason: a rule that rejected `published`
-// unconditionally, for every role, would satisfy the Editor half alone.
+// The publish enforcement is the status Select's ->options() closure in
+// PageForm, which derives a server-side `in:` validation rule from whichever
+// options it returns. An Editor never gets `published` in that list, so
+// submitting it anyway fails Laravel's own `in:` rule, not a custom check.
+// Posting the payload directly (rather than only checking the option list, as
+// the "hides the published option" test above does) proves the server-side
+// rule rejects it too -- not just that the UI never offers it. The Website
+// Manager half is what stops this test from passing for the wrong reason: a
+// rule that rejected `published` unconditionally, for every role, would
+// satisfy the Editor half alone.
+//
+// This replaced a `can('publish', $page)` pair that exercised
+// PagePolicy::publish(), an ability nothing in production called; the policy
+// method has since been deleted, and the same shape of test now exists on
+// Documents, News, Programmes and Projects.
 it('rejects a published status from an editor at the server, but allows it from a website manager', function () {
     $this->actingAs(pageUser(UserRole::Editor));
 

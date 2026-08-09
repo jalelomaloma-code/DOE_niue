@@ -176,9 +176,8 @@ it('rejects a file larger than the 20MB limit', function () {
 
 it('hides the Published option from Editors but keeps it enabled for admins', function () {
     // Two halves of "Editors cannot publish": this is the usability half
-    // (options filtering). The security half is covered separately below,
-    // via the publish policy ability. Both must hold for the constraint to
-    // actually be enforced, not merely suggested by the UI.
+    // (options filtering). The enforcement half is the test below, which
+    // posts `published` at the server instead of reading the option list.
     $editor = documentPanelEditor();
     $admin = documentPanelAdmin();
 
@@ -197,18 +196,64 @@ it('hides the Published option from Editors but keeps it enabled for admins', fu
         });
 });
 
-it('lets an editor update but not delete or publish a document, and lets an admin do both', function () {
+it('lets an editor update but not delete a document, and lets an admin delete', function () {
     $editor = documentPanelEditor();
     $admin = documentPanelAdmin();
     $document = Document::factory()->create();
 
     expect($editor->can('update', $document))->toBeTrue()
         ->and($editor->can('delete', $document))->toBeFalse()
-        ->and($editor->can('publish', $document))->toBeFalse()
-        ->and($admin->can('delete', $document))->toBeTrue()
-        ->and($admin->can('publish', $document))->toBeTrue();
+        ->and($admin->can('delete', $document))->toBeTrue();
 
     Livewire::actingAs($editor)
         ->test(EditDocument::class, ['record' => $document->getRouteKey()])
         ->assertSuccessful();
+});
+
+// Replaces a pair of `can('publish', $document)` assertions that exercised
+// DocumentPolicy::publish() -- an ability nothing in production ever called,
+// and which has since been deleted. Those assertions would have kept passing
+// with the real control removed entirely.
+//
+// The real control is the status Select's ->options() closure in DocumentForm:
+// Filament derives a server-side `in:` rule from whichever options it returns,
+// re-evaluated per request against the acting user, so an Editor posting
+// `published` fails Laravel's own validation. Posting the payload is the only
+// way to see that; reading the option list (the test above) only proves the UI
+// never offers it.
+//
+// The admin arm is load-bearing. Without it this test still passes if the
+// closure returns no options at all, or if the form is broken outright.
+it('rejects a published status from an editor at the server, but allows it from an admin', function () {
+    Storage::fake('public');
+    $category = DocumentCategory::create(['name' => 'Reports', 'slug' => 'reports', 'sort_order' => 1]);
+
+    Livewire::actingAs(documentPanelEditor())
+        ->test(CreateDocument::class)
+        ->fillForm([
+            'title' => 'Editor Published Attempt',
+            'slug' => 'editor-published-attempt',
+            'document_category_id' => $category->id,
+            'status' => ContentStatus::Published->value,
+            'file' => fakePdf('editor-attempt.pdf'),
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['status']);
+
+    expect(Document::where('slug', 'editor-published-attempt')->exists())->toBeFalse();
+
+    Livewire::actingAs(documentPanelAdmin())
+        ->test(CreateDocument::class)
+        ->fillForm([
+            'title' => 'Admin Published Document',
+            'slug' => 'admin-published-document',
+            'document_category_id' => $category->id,
+            'status' => ContentStatus::Published->value,
+            'file' => fakePdf('admin-document.pdf'),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Document::where('slug', 'admin-published-document')->first()?->status)
+        ->toBe(ContentStatus::Published);
 });

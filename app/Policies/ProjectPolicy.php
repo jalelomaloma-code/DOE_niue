@@ -28,10 +28,12 @@ class ProjectPolicy
         return ! $user->hasRole(UserRole::Viewer->value);
     }
 
-    public function publish(User $user, Project $project): bool
-    {
-        return $user->mayPublish();
-    }
+    // No publish ability, deliberately -- see the comment on the status
+    // Select's ->options() closure in ProjectForm, which is where publishing is
+    // actually enforced. A publish() here was called by nothing but tests,
+    // and adding a second, policy-based path would duplicate an enforcement
+    // that already runs server-side, with a different error surface.
+    // TeamMemberPolicy and NavigationItemPolicy have never carried one either.
 
     public function delete(User $user, Project $project): bool
     {

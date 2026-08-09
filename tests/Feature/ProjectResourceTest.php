@@ -104,9 +104,8 @@ it('requires alt text once an image is attached, and saves the alt as a media cu
 
 it('hides the Published option from Editors but keeps it enabled for admins', function () {
     // Two halves of "Editors cannot publish": this is the usability half
-    // (options filtering). The security half is covered separately below,
-    // via the publish policy ability. Both must hold for the constraint to
-    // actually be enforced, not merely suggested by the UI.
+    // (options filtering). The enforcement half is the test below, which
+    // posts `published` at the server instead of reading the option list.
     $editor = projectPanelEditor();
     $admin = projectPanelAdmin();
 
@@ -163,18 +162,59 @@ it('lets an admin edit and re-save a project that already has an image, without 
         ->and($project->fresh()->featuredImageAlt())->toBe('Volunteers collecting marine debris');
 });
 
-it('lets an editor update but not delete or publish a project, and lets an admin do both', function () {
+it('lets an editor update but not delete a project, and lets an admin delete', function () {
     $editor = projectPanelEditor();
     $admin = projectPanelAdmin();
     $project = Project::factory()->create();
 
     expect($editor->can('update', $project))->toBeTrue()
         ->and($editor->can('delete', $project))->toBeFalse()
-        ->and($editor->can('publish', $project))->toBeFalse()
-        ->and($admin->can('delete', $project))->toBeTrue()
-        ->and($admin->can('publish', $project))->toBeTrue();
+        ->and($admin->can('delete', $project))->toBeTrue();
 
     Livewire::actingAs($editor)
         ->test(EditProject::class, ['record' => $project->getRouteKey()])
         ->assertSuccessful();
+});
+
+// Replaces a pair of `can('publish', $project)` assertions that exercised
+// ProjectPolicy::publish() -- an ability nothing in production ever called,
+// and which has since been deleted. Those assertions would have kept passing
+// with the real control removed entirely.
+//
+// The real control is the status Select's ->options() closure in ProjectForm:
+// Filament derives a server-side `in:` rule from whichever options it returns,
+// re-evaluated per request against the acting user, so an Editor posting
+// `published` fails Laravel's own validation. Posting the payload is the only
+// way to see that; reading the option list (the test above) only proves the UI
+// never offers it.
+//
+// The admin arm is load-bearing. Without it this test still passes if the
+// closure returns no options at all, or if the form is broken outright.
+it('rejects a published status from an editor at the server, but allows it from an admin', function () {
+    Livewire::actingAs(projectPanelEditor())
+        ->test(CreateProject::class)
+        ->fillForm([
+            'title' => 'Editor Published Attempt',
+            'slug' => 'editor-published-attempt',
+            'summary' => 'A project an editor should not be able to publish.',
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['status']);
+
+    expect(Project::where('slug', 'editor-published-attempt')->exists())->toBeFalse();
+
+    Livewire::actingAs(projectPanelAdmin())
+        ->test(CreateProject::class)
+        ->fillForm([
+            'title' => 'Admin Published Project',
+            'slug' => 'admin-published-project',
+            'summary' => 'A project an admin may publish.',
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Project::where('slug', 'admin-published-project')->first()?->status)
+        ->toBe(ContentStatus::Published);
 });

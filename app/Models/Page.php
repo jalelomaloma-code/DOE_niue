@@ -177,16 +177,9 @@ class Page extends Model
         }
     }
 
-    /**
-     * Recompute and persist this page's path, cascading to descendants.
-     *
-     * Recomputation already happens automatically on every save() via the
-     * saving/saved hooks above; this is a named entry point for callers
-     * (e.g. an admin action or a data-repair command) that want to state
-     * the intent explicitly without depending on that hook wiring.
-     */
-    public function refreshPath(): void
-    {
-        $this->save();
-    }
+    // There is deliberately no refreshPath() helper. One existed, called by
+    // nothing, whose whole body was $this->save() -- the saving/saved hooks
+    // above already recompute and cascade `path` on every save, so it added a
+    // second name for an operation that has one, and a name that implied it
+    // did something save() does not.
 }

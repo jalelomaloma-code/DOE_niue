@@ -178,9 +178,8 @@ it('rejects a featured image larger than the 5MB limit', function () {
 
 it('hides the Published option from Editors but keeps it enabled for admins', function () {
     // Two halves of "Editors cannot publish": this is the usability half
-    // (options filtering). The security half is covered separately below,
-    // via the publish policy ability. Both must hold for the constraint to
-    // actually be enforced, not merely suggested by the UI.
+    // (options filtering). The enforcement half is the test below, which
+    // posts `published` at the server instead of reading the option list.
     $editor = newsArticlePanelEditor();
     $admin = newsArticlePanelAdmin();
 
@@ -250,18 +249,63 @@ it('lets an admin edit and re-save a news article that already has an image, wit
         ->and($article->fresh()->featuredImageAlt())->toBe('Volunteers collecting marine debris');
 });
 
-it('lets an editor update but not delete or publish a news article, and lets an admin do both', function () {
+it('lets an editor update but not delete a news article, and lets an admin delete', function () {
     $editor = newsArticlePanelEditor();
     $admin = newsArticlePanelAdmin();
     $article = NewsArticle::factory()->create();
 
     expect($editor->can('update', $article))->toBeTrue()
         ->and($editor->can('delete', $article))->toBeFalse()
-        ->and($editor->can('publish', $article))->toBeFalse()
-        ->and($admin->can('delete', $article))->toBeTrue()
-        ->and($admin->can('publish', $article))->toBeTrue();
+        ->and($admin->can('delete', $article))->toBeTrue();
 
     Livewire::actingAs($editor)
         ->test(EditNewsArticle::class, ['record' => $article->getRouteKey()])
         ->assertSuccessful();
+});
+
+// Replaces a pair of `can('publish', $article)` assertions that exercised
+// NewsArticlePolicy::publish() -- an ability nothing in production ever
+// called, and which has since been deleted. Those assertions would have kept
+// passing with the real control removed entirely.
+//
+// The real control is the status Select's ->options() closure in
+// NewsArticleForm: Filament derives a server-side `in:` rule from whichever
+// options it returns, re-evaluated per request against the acting user, so an
+// Editor posting `published` fails Laravel's own validation. Posting the
+// payload is the only way to see that; reading the option list (the test
+// above) only proves the UI never offers it.
+//
+// The admin arm is load-bearing. Without it this test still passes if the
+// closure returns no options at all, or if the form is broken outright.
+it('rejects a published status from an editor at the server, but allows it from an admin', function () {
+    $category = NewsCategory::create(['name' => 'Announcements', 'slug' => 'announcements']);
+
+    Livewire::actingAs(newsArticlePanelEditor())
+        ->test(CreateNewsArticle::class)
+        ->fillForm([
+            'title' => 'Editor Published Attempt',
+            'slug' => 'editor-published-attempt',
+            'excerpt' => 'An article an editor should not be able to publish.',
+            'news_category_id' => $category->id,
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['status']);
+
+    expect(NewsArticle::where('slug', 'editor-published-attempt')->exists())->toBeFalse();
+
+    Livewire::actingAs(newsArticlePanelAdmin())
+        ->test(CreateNewsArticle::class)
+        ->fillForm([
+            'title' => 'Admin Published Article',
+            'slug' => 'admin-published-article',
+            'excerpt' => 'An article an admin may publish.',
+            'news_category_id' => $category->id,
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(NewsArticle::where('slug', 'admin-published-article')->first()?->status)
+        ->toBe(ContentStatus::Published);
 });

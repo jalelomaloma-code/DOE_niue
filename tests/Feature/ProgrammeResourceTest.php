@@ -105,9 +105,8 @@ it('requires alt text once an image is attached, and saves the alt as a media cu
 
 it('hides the Published option from Editors but keeps it enabled for admins', function () {
     // Two halves of "Editors cannot publish": this is the usability half
-    // (options filtering). The security half is covered separately below,
-    // via the publish policy ability. Both must hold for the constraint to
-    // actually be enforced, not merely suggested by the UI.
+    // (options filtering). The enforcement half is the test below, which
+    // posts `published` at the server instead of reading the option list.
     $editor = programmePanelEditor();
     $admin = programmePanelAdmin();
 
@@ -165,18 +164,59 @@ it('lets an admin edit and re-save a programme that already has an image, withou
         ->and($programme->fresh()->featuredImageAlt())->toBe('Divers replanting coral fragments');
 });
 
-it('lets an editor update but not delete or publish a programme, and lets an admin do both', function () {
+it('lets an editor update but not delete a programme, and lets an admin delete', function () {
     $editor = programmePanelEditor();
     $admin = programmePanelAdmin();
     $programme = Programme::factory()->create();
 
     expect($editor->can('update', $programme))->toBeTrue()
         ->and($editor->can('delete', $programme))->toBeFalse()
-        ->and($editor->can('publish', $programme))->toBeFalse()
-        ->and($admin->can('delete', $programme))->toBeTrue()
-        ->and($admin->can('publish', $programme))->toBeTrue();
+        ->and($admin->can('delete', $programme))->toBeTrue();
 
     Livewire::actingAs($editor)
         ->test(EditProgramme::class, ['record' => $programme->getRouteKey()])
         ->assertSuccessful();
+});
+
+// Replaces a pair of `can('publish', $programme)` assertions that exercised
+// ProgrammePolicy::publish() -- an ability nothing in production ever called,
+// and which has since been deleted. Those assertions would have kept passing
+// with the real control removed entirely.
+//
+// The real control is the status Select's ->options() closure in
+// ProgrammeForm: Filament derives a server-side `in:` rule from whichever
+// options it returns, re-evaluated per request against the acting user, so an
+// Editor posting `published` fails Laravel's own validation. Posting the
+// payload is the only way to see that; reading the option list (the test
+// above) only proves the UI never offers it.
+//
+// The admin arm is load-bearing. Without it this test still passes if the
+// closure returns no options at all, or if the form is broken outright.
+it('rejects a published status from an editor at the server, but allows it from an admin', function () {
+    Livewire::actingAs(programmePanelEditor())
+        ->test(CreateProgramme::class)
+        ->fillForm([
+            'title' => 'Editor Published Attempt',
+            'slug' => 'editor-published-attempt',
+            'summary' => 'A programme an editor should not be able to publish.',
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['status']);
+
+    expect(Programme::where('slug', 'editor-published-attempt')->exists())->toBeFalse();
+
+    Livewire::actingAs(programmePanelAdmin())
+        ->test(CreateProgramme::class)
+        ->fillForm([
+            'title' => 'Admin Published Programme',
+            'slug' => 'admin-published-programme',
+            'summary' => 'A programme an admin may publish.',
+            'status' => ContentStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Programme::where('slug', 'admin-published-programme')->first()?->status)
+        ->toBe(ContentStatus::Published);
 });
