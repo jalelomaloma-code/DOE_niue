@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\TeamMember;
+use Database\Seeders\TeamMemberSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,7 +19,7 @@ it('renders a team grid block with active members only', function () {
     TeamMember::create(['name' => 'Visible Person', 'role' => 'Director', 'sort_order' => 1]);
     TeamMember::create(['name' => 'Former Person', 'role' => 'Officer', 'sort_order' => 2, 'is_active' => false]);
 
-    $html = \Illuminate\Support\Facades\Blade::render(
+    $html = Blade::render(
         '<x-page.content :blocks="$blocks" />',
         ['blocks' => [['type' => 'team_grid', 'data' => ['heading' => 'Our Team']]]]
     );
@@ -25,6 +27,48 @@ it('renders a team grid block with active members only', function () {
     expect($html)->toContain('Visible Person')
         ->and($html)->toContain('Director')
         ->and($html)->not->toContain('Former Person');
+});
+
+// Spec §9: demo team members must be UNMISTAKABLY fictional. The seeded
+// names ("Talia Fifita-Brown, Director") are entirely plausible Niuean and
+// Tongan names against plausible government job titles; before this, the
+// only demo signal was a watermark burnt into the placeholder photograph and
+// a phrase in the alt attribute -- neither of which a sighted reviewer
+// scanning the page sees. At a client demo these read as real staff.
+//
+// The marker is driven off is_demo rather than baked into the seeded role
+// string, so that a real staff member the Department adds later is never
+// labelled, and a demo record stays labelled even if someone edits its role
+// in the CMS.
+it('labels a demo team member as demo on the rendered card, and leaves real staff unlabelled', function () {
+    TeamMember::create(['name' => 'Placeholder Person', 'role' => 'Director', 'sort_order' => 1, 'is_demo' => true]);
+    TeamMember::create(['name' => 'Actual Person', 'role' => 'Senior Adviser', 'sort_order' => 2, 'is_demo' => false]);
+
+    $html = Blade::render(
+        '<x-page.content :blocks="$blocks" />',
+        ['blocks' => [['type' => 'team_grid', 'data' => ['heading' => 'Our Team']]]]
+    );
+
+    expect($html)->toContain('Director (Demo)')
+        ->and($html)->toContain('Senior Adviser')
+        ->and($html)->not->toContain('Senior Adviser (Demo)');
+});
+
+it('ships every seeded demo team member with the marker visible on the page', function () {
+    $this->seed(TeamMemberSeeder::class);
+
+    $html = Blade::render(
+        '<x-page.content :blocks="$blocks" />',
+        ['blocks' => [['type' => 'team_grid', 'data' => ['heading' => 'Meet the team']]]]
+    );
+
+    $members = TeamMember::active()->get();
+
+    expect($members)->not->toBeEmpty();
+
+    foreach ($members as $member) {
+        expect($html)->toContain($member->role.' (Demo)');
+    }
 });
 
 it('pins the photo collection to the public disk', function () {
@@ -62,7 +106,7 @@ it('eager-loads media for the team grid block instead of querying per member', f
 
     DB::enableQueryLog();
 
-    \Illuminate\Support\Facades\Blade::render(
+    Blade::render(
         '<x-page.content :blocks="$blocks" />',
         ['blocks' => [['type' => 'team_grid', 'data' => ['heading' => 'Our Team']]]]
     );

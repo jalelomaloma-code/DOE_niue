@@ -17,7 +17,10 @@
                     @endif
 
                     <h3 class="font-semibold text-brand">{{ $member->name }}</h3>
-                    <p class="text-sm text-text/80">{{ $member->role }}</p>
+                    {{-- displayRole(), not role: appends "(Demo)" for seeded
+                         placeholder people, so a reviewer scanning the page can
+                         see they are not real staff. See TeamMember. --}}
+                    <p class="text-sm text-text/80">{{ $member->displayRole() }}</p>
 
                     @if ($member->bio)
                         <p class="mt-2 text-sm">{{ $member->bio }}</p>

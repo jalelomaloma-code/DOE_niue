@@ -25,6 +25,29 @@ class TeamMember extends Model implements HasMedia
         return $query->where('is_active', true)->orderBy('sort_order');
     }
 
+    /**
+     * The role as it should appear on the public team card.
+     *
+     * Spec §9 requires demo team members to be unmistakably fictional. The
+     * seeded names and job titles are entirely plausible for a government
+     * department, and the only other demo signals -- a watermark inside the
+     * generated placeholder photo, and a phrase in the alt attribute -- are
+     * both invisible to a sighted reviewer scanning the page, so at a client
+     * demo these read as the Department's actual staff.
+     *
+     * Derived from is_demo rather than baked into the seeded `role` string:
+     * real staff the Department adds later are never labelled, and a demo
+     * record stays labelled even if someone edits its role in the CMS.
+     */
+    public function displayRole(): ?string
+    {
+        if (blank($this->role)) {
+            return $this->role;
+        }
+
+        return $this->is_demo ? $this->role.' (Demo)' : $this->role;
+    }
+
     public function photoUrl(string $conversion = 'card'): ?string
     {
         return $this->getFirstMediaUrl('photo', $conversion) ?: null;
