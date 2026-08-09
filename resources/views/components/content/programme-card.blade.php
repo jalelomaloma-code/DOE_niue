@@ -3,14 +3,20 @@
 {{--
     Reused for both programmes (homepage "Our Environment Programmes" section)
     and projects (homepage "Featured Projects" section) — both models expose
-    the same title/summary/featured-image surface via HasFeaturedImage, and
-    neither has a detail route yet.
+    the same title/summary/featured-image surface via HasFeaturedImage.
 
-    TODO(spec-2/spec-3): link to the programme or project show route once it
-    exists — programme detail pages are Spec 2, project detail pages are
-    Spec 3. Do not invent a placeholder route in the meantime.
+    Programme detail pages shipped in Spec 2. Project detail pages are
+    Spec 3, so a Project passed here still has nowhere to link to.
+
+    TODO(spec-3): link to the project show route once it exists. Do not
+    invent a placeholder route in the meantime.
 --}}
-<a href="#" class="flex h-full flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm transition-shadow hover:border-brand/30 hover:shadow-md">
+@php
+    $href = $programme instanceof \App\Models\Programme
+        ? route('programmes.show', $programme->slug)
+        : '#';
+@endphp
+<a href="{{ $href }}" class="flex h-full flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm transition-shadow hover:border-brand/30 hover:shadow-md">
     @if ($url = $programme->featuredImageUrl())
         <img src="{{ $url }}" alt="{{ $programme->featuredImageAlt() ?? '' }}" class="h-40 w-full object-cover">
     @else
