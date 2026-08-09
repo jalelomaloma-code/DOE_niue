@@ -93,3 +93,22 @@ it('gives every homepage section enough featured content', function () {
         ->and(Document::published()->featured()->count())->toBeGreaterThanOrEqual(3)
         ->and(NewsArticle::published()->count())->toBeGreaterThanOrEqual(4);
 });
+
+it('purges demo pages and team members but keeps navigation items', function () {
+    $this->seed(\Database\Seeders\NavigationItemSeeder::class);
+    $this->seed(\Database\Seeders\PageSeeder::class);
+    $this->seed(\Database\Seeders\TeamMemberSeeder::class);
+
+    expect(\App\Models\Page::count())->toBeGreaterThan(0)
+        ->and(\App\Models\TeamMember::count())->toBeGreaterThan(0);
+
+    $this->artisan('demo:purge', ['--force' => true])->assertSuccessful();
+
+    expect(\App\Models\Page::count())->toBe(0)
+        ->and(\App\Models\TeamMember::count())->toBe(0)
+        // NavigationItemSeeder seeds six top-level items post-regroup (Home,
+        // About Us, Our Work, News & Events, Resources, Contact Us) -- not
+        // twelve. NavigationItem has no is_demo column at all, so this count
+        // must be exactly what was seeded, unchanged by the purge.
+        ->and(\App\Models\NavigationItem::count())->toBe(6);
+});

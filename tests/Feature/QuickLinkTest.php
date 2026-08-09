@@ -83,7 +83,7 @@ it('re-seeding after a URL change updates the existing row instead of leaving a 
     // different path than the placeholder). Re-running the *unchanged*
     // seeder should then update that row back to the seeder's url — keyed
     // on label — rather than leaving it alone and inserting a second row
-    // for '/waste-and-recycling'.
+    // for '/our-work/waste-and-recycling'.
     $wasteLink = QuickLink::where('label', 'Waste & Recycling')->firstOrFail();
     $wasteLink->update(['url' => '/waste-and-recycling-OLD-PLACEHOLDER']);
 
@@ -91,7 +91,9 @@ it('re-seeding after a URL change updates the existing row instead of leaving a 
 
     expect(QuickLink::count())->toBe(6)
         ->and(QuickLink::where('label', 'Waste & Recycling')->count())->toBe(1)
-        ->and(QuickLink::where('label', 'Waste & Recycling')->value('url'))->toBe('/waste-and-recycling')
+        // Task 11 moved this under /our-work/ when the topic sections became
+        // children of the new Our Work landing page (spec §3a).
+        ->and(QuickLink::where('label', 'Waste & Recycling')->value('url'))->toBe('/our-work/waste-and-recycling')
         ->and(QuickLink::where('url', '/waste-and-recycling-OLD-PLACEHOLDER')->exists())->toBeFalse();
 });
 

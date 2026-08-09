@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\Document;
 use App\Models\NewsArticle;
+use App\Models\Page;
 use App\Models\Programme;
 use App\Models\Project;
+use App\Models\TeamMember;
 use Illuminate\Console\Command;
 
 class PurgeDemoContent extends Command
@@ -15,12 +17,18 @@ class PurgeDemoContent extends Command
     protected $description = 'Permanently delete all content flagged is_demo';
 
     /**
-     * Projects first: they reference programmes via a foreign key. Deleting
+     * TeamMember and Page come first: TeamMember has no foreign-key
+     * relationships to worry about, and Page's own `parent_id` uses
+     * nullOnDelete(), so order within Page (or relative to the rest of this
+     * list) doesn't matter for constraints — but deleting children before
+     * parents is the safer default even when it isn't strictly required.
+     *
+     * Projects next: they reference programmes via a foreign key. Deleting
      * a Programme before its demo Projects would fail the constraint (or,
      * since it's nullOnDelete, silently orphan a still-live Project) —
      * either way, children must go before parents.
      */
-    private const MODELS = [Project::class, NewsArticle::class, Document::class, Programme::class];
+    private const MODELS = [TeamMember::class, Page::class, Project::class, NewsArticle::class, Document::class, Programme::class];
 
     public function handle(): int
     {

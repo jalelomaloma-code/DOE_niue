@@ -23,7 +23,11 @@ class SettingsSeeder extends Seeder
             'hero_headline' => "Protecting Niue's Environment for Future Generations",
             'hero_intro' => 'Supporting conservation, biodiversity, sustainable waste management and responsible stewardship of Niue\'s natural environment.',
             'hero_primary_cta_label' => 'Explore Our Work',
-            'hero_primary_cta_url' => '/environment-programmes',
+            // Hierarchy regrouped 2026-08-08 (spec §3a) moved this under
+            // /our-work/ -- same reason as the QuickLinkSeeder update in
+            // Task 11. Found live-404ing on the homepage hero button during
+            // the navigation click-through and fixed alongside it.
+            'hero_primary_cta_url' => '/our-work/environment-programmes',
             'hero_secondary_cta_label' => 'Latest News',
             'hero_secondary_cta_url' => '/news',
             'quick_links_heading' => 'Quick Links',

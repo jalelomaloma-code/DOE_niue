@@ -17,24 +17,28 @@ class DatabaseSeeder extends Seeder
      * WithoutModelEvents swaps the event dispatcher for a NullDispatcher for
      * the entire duration of this method, including everything nested calls
      * run — the trait is checked per-seeder-class, but the swap it makes is
-     * global, so DemoContentSeeder's own media rows would silently get a
-     * null uuid and never render an existing-image preview in the admin,
-     * even though the file itself is attached correctly.
+     * global, so DemoContentSeeder's and TeamMemberSeeder's own media rows
+     * would silently get a null uuid and never render an existing-image
+     * preview in the admin, even though the file itself is attached
+     * correctly. (PageSeeder's `image` blocks bypass MediaLibrary entirely —
+     * the FileUpload field they mirror stores a plain path string in JSON,
+     * not a Media row — so this reasoning doesn't apply to Page, but the
+     * seeder still shares the dispatcher with everything else in this run.)
      *
      * Checked, not just assumed, that removing the trait is safe for the
-     * other five seeders: RoleSeeder (Role::findOrCreate, a Spatie
+     * other six seeders: RoleSeeder (Role::findOrCreate, a Spatie
      * Permission model with no listeners), DocumentCategorySeeder,
-     * QuickLinkSeeder and NavigationItemSeeder (plain updateOrCreate/create,
-     * no model hooks), SettingsSeeder (->update() on SiteSetting/
-     * HomepageSetting, also no hooks). The only model hook anywhere in
-     * app/Models is HasBlame's
+     * QuickLinkSeeder, NavigationItemSeeder and PageSeeder (plain
+     * updateOrCreate/create, no model hooks), SettingsSeeder (->update() on
+     * SiteSetting/HomepageSetting, also no hooks). The only model hook
+     * anywhere in app/Models is HasBlame's
      * creating/updating listener, and it's gated behind auth()->check(),
      * which is always false in a console seeding context regardless of
      * whether events fire.
      */
     public function run(): void
     {
-        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class]);
+        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class, PageSeeder::class, TeamMemberSeeder::class]);
 
         // User::factory(10)->create();
 

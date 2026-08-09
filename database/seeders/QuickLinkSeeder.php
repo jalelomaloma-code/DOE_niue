@@ -10,10 +10,14 @@ class QuickLinkSeeder extends Seeder
     public function run(): void
     {
         $links = [
-            ['label' => 'Environment Programmes', 'icon' => 'heroicon-o-globe-alt',        'url' => '/environment-programmes',        'description' => 'Conservation, waste, climate and biodiversity work.'],
-            ['label' => 'Waste & Recycling',      'icon' => 'heroicon-o-trash',            'url' => '/waste-and-recycling',           'description' => 'Waste services, recycling and disposal guidance.'],
-            ['label' => 'Biodiversity',           'icon' => 'heroicon-o-sparkles',         'url' => '/biodiversity-and-conservation', 'description' => 'Protecting Niue\'s native species and habitats.'],
-            ['label' => 'Climate & Marine',       'icon' => 'heroicon-o-cloud',            'url' => '/climate-and-marine',            'description' => 'Climate resilience and marine protection.'],
+            // Hierarchy regrouped 2026-08-08 (spec §3a): the four topic
+            // sections moved under /our-work/ when Task 11 created that
+            // landing page. Publications and Report an Issue still point at
+            // routes that belong to a later spec and are left as-is.
+            ['label' => 'Environment Programmes', 'icon' => 'heroicon-o-globe-alt',        'url' => '/our-work/environment-programmes',        'description' => 'Conservation, waste, climate and biodiversity work.'],
+            ['label' => 'Waste & Recycling',      'icon' => 'heroicon-o-trash',            'url' => '/our-work/waste-and-recycling',           'description' => 'Waste services, recycling and disposal guidance.'],
+            ['label' => 'Biodiversity',           'icon' => 'heroicon-o-sparkles',         'url' => '/our-work/biodiversity-and-conservation', 'description' => 'Protecting Niue\'s native species and habitats.'],
+            ['label' => 'Climate & Marine',       'icon' => 'heroicon-o-cloud',            'url' => '/our-work/climate-and-marine',            'description' => 'Climate resilience and marine protection.'],
             ['label' => 'Publications',           'icon' => 'heroicon-o-document-text',    'url' => '/resources',                     'description' => 'Reports, policies, legislation and forms.'],
             ['label' => 'Report an Issue',        'icon' => 'heroicon-o-exclamation-triangle', 'url' => '/report-an-environmental-issue', 'description' => 'Tell us about pollution or environmental damage.'],
         ];
