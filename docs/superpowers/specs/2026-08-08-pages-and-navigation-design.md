@@ -79,6 +79,47 @@ need no JavaScript, cannot trap focus, and give each section a page worth readin
 
 ---
 
+## 3a. Information architecture — regrouped 2026-08-08
+
+The client found twelve top-level navigation items too many. Reduced to six,
+with the rest becoming children reached from their section's landing page. The
+**mechanism is unchanged** — still flat top-level navigation with landing pages,
+not dropdowns; only the grouping changed.
+
+```
+Home
+About Us      → About the Department · Mandate · Mission & Vision · Our Team
+Our Work      → Environment Programmes · Waste & Recycling ·
+                Biodiversity & Conservation · Climate & Marine · Projects
+News & Events
+Resources     → Publications · Policies · Legislation · Forms ·
+                Reports · Downloads · Gallery
+Contact Us    → Contact · Vacancies · Report an Environmental Issue
+```
+
+**"Our Work" is a new page** with no equivalent in the original IA. It absorbs
+four topic sections plus Projects — five separate top-level items that are
+really one idea.
+
+**What Spec 2 actually creates**, given later specs own the rest:
+
+| Page | Spec |
+|---|---|
+| About Us, and its four children | 2 |
+| Our Work | 2 |
+| Environment Programmes, Waste & Recycling, Biodiversity & Conservation, Climate & Marine | 2 |
+| Contact Us | 2 |
+| Privacy, Terms, Accessibility (footer only) | 2 |
+| Projects, News & Events, Resources and its children, Gallery, Vacancies | 3 |
+| Report an Environmental Issue | 4 |
+
+So `Our Work` and `Resources` will list some children that do not exist yet, and
+`News & Events` will 404 until Spec 3. That is the same deliberate position the
+project already holds: the Department reviews the full information architecture
+at the demo, and the branded 404 renders inside the site chrome.
+
+---
+
 ## 4. Content model
 
 ### 4.1 `Page`

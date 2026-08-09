@@ -1884,18 +1884,15 @@ class NavigationItemSeeder extends Seeder
 {
     public function run(): void
     {
+        // Six top-level items, regrouped 2026-08-08 — twelve was too many.
+        // Their children are reached from each section's landing page, not
+        // from a dropdown. See spec §3a.
         $items = [
             ['label' => 'Home', 'url' => '/'],
             ['label' => 'About Us', 'url' => '/about'],
-            ['label' => 'Environment Programmes', 'url' => '/environment-programmes'],
-            ['label' => 'Waste & Recycling', 'url' => '/waste-and-recycling'],
-            ['label' => 'Biodiversity & Conservation', 'url' => '/biodiversity-and-conservation'],
-            ['label' => 'Climate & Marine', 'url' => '/climate-and-marine'],
-            ['label' => 'Projects', 'url' => '/projects'],
+            ['label' => 'Our Work', 'url' => '/our-work'],
             ['label' => 'News & Events', 'url' => '/news'],
             ['label' => 'Resources', 'url' => '/resources'],
-            ['label' => 'Gallery', 'url' => '/gallery'],
-            ['label' => 'Vacancies', 'url' => '/vacancies'],
             ['label' => 'Contact Us', 'url' => '/contact'],
         ];
 
@@ -1998,13 +1995,22 @@ Expected: FAIL — seeders do not exist.
 
 `database/seeders/PageSeeder.php` creates, all with `is_demo => true`, `status => ContentStatus::Published` and `published_at => now()->subWeek()`:
 
+**Hierarchy regrouped 2026-08-08 — see spec §3a.** Six top-level pages; the four
+topic sections are now children of a new **Our Work** landing page.
+
 - **About Us** (`about`, no parent), with children **About the Department** (`about-the-department`), **Mandate** (`mandate`), **Mission & Vision** (`mission-and-vision`), **Our Team** (`our-team`, containing a `team_grid` block)
-- **Environment Programmes** (`environment-programmes`) — rich text intro plus a `programmes_list` block
-- **Waste & Recycling** (`waste-and-recycling`) — rich text, a `card_grid` of services, a `documents_list` filtered to Forms
-- **Biodiversity & Conservation** (`biodiversity-and-conservation`) — rich text and an image
-- **Climate & Marine** (`climate-and-marine`) — rich text and a callout
-- **Contact Us** (`contact`) — rich text and a `contact_details` block
-- **Privacy** (`privacy`), **Terms** (`terms`), **Accessibility** (`accessibility`) — rich text, each with `show_in_section_nav => false`
+- **Our Work** (`our-work`, no parent) — rich text intro plus a `card_grid` linking to its children. **This page is new**; it exists to absorb four topic sections plus Projects, which were five separate top-level items and are really one idea. Its children:
+  - **Environment Programmes** (`our-work/environment-programmes`) — rich text intro plus a `programmes_list` block
+  - **Waste & Recycling** (`our-work/waste-and-recycling`) — rich text, a `card_grid` of services, a `documents_list` filtered to Forms
+  - **Biodiversity & Conservation** (`our-work/biodiversity-and-conservation`) — rich text and an image
+  - **Climate & Marine** (`our-work/climate-and-marine`) — rich text and a callout
+- **Contact Us** (`contact`, no parent) — rich text and a `contact_details` block
+- **Privacy** (`privacy`), **Terms** (`terms`), **Accessibility** (`accessibility`) — rich text, each with `show_in_section_nav => false`, reachable from the footer only
+
+**Note the path change.** The topic sections now resolve at `/our-work/waste-and-recycling`, not `/waste-and-recycling`. Two consequences:
+
+1. The seeded `QuickLink` URLs from Spec 1 still point at the old flat paths and will 404. **Update `QuickLinkSeeder` to the new paths** as part of this task, and say so in your report.
+2. `Projects`, `News & Events`, `Resources` and its children, `Gallery` and `Vacancies` belong to Spec 3 and are not created here — so `Our Work` lists a Projects child that does not exist yet, and `News & Events`/`Resources` 404. That is the project's existing, deliberate position.
 
 Copy must not name real Niue institutions, statistics, dates or events. Generic environmental language only.
 
