@@ -22,18 +22,19 @@ class DatabaseSeeder extends Seeder
      * even though the file itself is attached correctly.
      *
      * Checked, not just assumed, that removing the trait is safe for the
-     * other four seeders: RoleSeeder (Role::findOrCreate, a Spatie
-     * Permission model with no listeners), DocumentCategorySeeder and
-     * QuickLinkSeeder (plain updateOrCreate/create, no model hooks),
-     * SettingsSeeder (->update() on SiteSetting/HomepageSetting, also no
-     * hooks). The only model hook anywhere in app/Models is HasBlame's
+     * other five seeders: RoleSeeder (Role::findOrCreate, a Spatie
+     * Permission model with no listeners), DocumentCategorySeeder,
+     * QuickLinkSeeder and NavigationItemSeeder (plain updateOrCreate/create,
+     * no model hooks), SettingsSeeder (->update() on SiteSetting/
+     * HomepageSetting, also no hooks). The only model hook anywhere in
+     * app/Models is HasBlame's
      * creating/updating listener, and it's gated behind auth()->check(),
      * which is always false in a console seeding context regardless of
      * whether events fire.
      */
     public function run(): void
     {
-        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, DemoContentSeeder::class]);
+        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class]);
 
         // User::factory(10)->create();
 

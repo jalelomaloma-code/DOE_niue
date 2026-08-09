@@ -115,7 +115,7 @@ it('does not run a query per card to resolve featured images', function () {
     // queries traded for 7 lazy per-card ones: 4 programmes + 3 projects
     // seeded above), comfortably under 25.
     //
-    // The 16 queries this request actually makes, in order, on a fresh
+    // The 19 queries this request actually makes, in order, on a fresh
     // test database (RefreshDatabase, no settings seeded yet):
     //   1-2   homepage_settings: select (none found) + firstOrCreate insert
     //   3     quick_links: active() select
@@ -128,16 +128,28 @@ it('does not run a query per card to resolve featured images', function () {
     //         (none found) + firstOrCreate insert + fresh() re-select
     //         (current() must re-fetch after insertGetId(), see
     //         SiteSetting::current())
-    //   16    site_settings (footer's independent SiteSetting::current()
-    //         call): select — the row exists now, so just one query
+    //   16    navigation_items (header's NavigationItem::active(), Task 10):
+    //         select — the View::composer resolves this once and shares it
+    //         with both the header's desktop <ul> and its mobile <details>
+    //         list, so the header itself never queries it twice
+    //   17    site_settings (footer's independent View::composer call):
+    //         select — the row exists now, so just one query
+    //   18    navigation_items (footer's independent View::composer call):
+    //         select — the composer fires once per matching component, so
+    //         header and footer each cause one navigation_items query; the
+    //         "resolve once" guarantee is about the header's own two lists,
+    //         not about header vs. footer sharing a single request-wide
+    //         query
+    //   19    pages: Page::published() lookup for the footer's Privacy/
+    //         Terms/Accessibility column (Task 10)
     //
     // Content-section eager loading (4-11) is what this test exists to
-    // protect; the settings/quick-link queries (1-3, 12-16) are fixed
-    // overhead unrelated to card rendering. If a future spec legitimately
-    // changes that overhead (e.g. caching settings, adding a homepage
-    // section), update this number deliberately rather than loosening it
-    // back into a ceiling.
-    expect($queryCount)->toBe(16);
+    // protect; the settings/quick-link/navigation queries (1-3, 12-19) are
+    // fixed overhead unrelated to card rendering. If a future spec
+    // legitimately changes that overhead (e.g. caching settings, adding a
+    // homepage section), update this number deliberately rather than
+    // loosening it back into a ceiling.
+    expect($queryCount)->toBe(19);
 });
 
 it('respects a curated sort_order in the fallback, not just the featured path', function () {

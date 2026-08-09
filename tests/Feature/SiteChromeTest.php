@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\NavigationItem;
 use App\Models\SiteSetting;
 
 beforeEach(function () {
@@ -8,6 +9,11 @@ beforeEach(function () {
         'government_name' => 'Government of Niue',
         'email' => 'environment@mail.gov.nu',
     ]);
+
+    // Navigation is database-driven (Task 10): without a seeded item for
+    // '/', the header renders no links at all and nothing can carry
+    // aria-current for the homepage.
+    NavigationItem::create(['label' => 'Home', 'url' => '/', 'sort_order' => 0]);
 });
 
 it('shows the government identity and contact details from the database', function () {

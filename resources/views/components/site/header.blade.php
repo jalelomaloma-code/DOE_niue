@@ -1,7 +1,3 @@
-@php
-    $navItems = config('navigation.primary');
-@endphp
-
 <header>
     <div class="on-dark bg-brand text-white">
         <div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
@@ -18,17 +14,17 @@
         {{-- Desktop: a plain, permanently visible list — no disclosure
              involved, so it's just an ordinary display override. --}}
         <ul class="mx-auto hidden max-w-7xl flex-wrap px-4 lg:flex">
-            @foreach ($navItems as $item)
-                @php $isCurrent = request()->is(ltrim($item['url'], '/') ?: '/'); @endphp
+            @foreach ($navigation as $item)
+                @php $isCurrent = request()->is(ltrim($item->url, '/') ?: '/'); @endphp
                 <li>
-                    <a href="{{ $item['url'] }}"
+                    <a href="{{ $item->url }}"
                        @if ($isCurrent) aria-current="page" @endif
                        @class([
                            'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
                            'border-accent' => $isCurrent,
                            'border-transparent' => ! $isCurrent,
                        ])>
-                        {{ $item['label'] }}
+                        {{ $item->label }}
                     </a>
                 </li>
             @endforeach
@@ -66,17 +62,17 @@
             </summary>
 
             <ul id="mobile-nav" class="mx-auto max-w-7xl list-none px-4 pb-4">
-                @foreach ($navItems as $item)
-                    @php $isCurrent = request()->is(ltrim($item['url'], '/') ?: '/'); @endphp
+                @foreach ($navigation as $item)
+                    @php $isCurrent = request()->is(ltrim($item->url, '/') ?: '/'); @endphp
                     <li>
-                        <a href="{{ $item['url'] }}"
+                        <a href="{{ $item->url }}"
                            @if ($isCurrent) aria-current="page" @endif
                            @class([
                                'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
                                'border-accent' => $isCurrent,
                                'border-transparent' => ! $isCurrent,
                            ])>
-                            {{ $item['label'] }}
+                            {{ $item->label }}
                         </a>
                     </li>
                 @endforeach
