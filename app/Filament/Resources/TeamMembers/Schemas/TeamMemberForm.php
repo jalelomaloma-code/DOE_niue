@@ -41,8 +41,7 @@ class TeamMemberForm
                     ->numeric()
                     ->default(0),
                 Toggle::make('is_active')
-                    ->helperText('Switch off when someone leaves the Department, instead of deleting their record.')
-                    ->required(),
+                    ->helperText('Switch off when someone leaves the Department, instead of deleting their record.'),
             ]);
     }
 }
