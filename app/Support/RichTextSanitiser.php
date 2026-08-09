@@ -26,6 +26,18 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
  * (`on*`) attributes are excluded too. Before adding an `allowElement()` call
  * for Task 6's block set, check whether `allowSafeElements()` already covers
  * it — see vendor/symfony/html-sanitizer/Reference/W3CReference.php.
+ *
+ * Heading levels are policed here, not just in the editor toolbar. The page
+ * template reserves `<h1>` for the page title and `<h2>` for a block's own
+ * heading (see resources/views/components/blocks/rich-text.blade.php), so
+ * rich-text body content must start no higher than `<h3>`. A restricted
+ * toolbar only stops an editor from *clicking* a heading level — pasting
+ * from Word or another CMS carries `<h1>`/`<h2>` tags that never touch the
+ * toolbar. This is the one path every save goes through, so it's the one
+ * that has to hold the line. `blockElement()`, not `dropElement()`: an
+ * unwrapped heading keeps its text and renders as a paragraph, a visible
+ * signal to the editor to reformat, rather than silently deleting whatever
+ * they wrote.
  */
 class RichTextSanitiser
 {
@@ -50,6 +62,12 @@ class RichTextSanitiser
             ->allowSafeElements()
             ->allowRelativeLinks()
             ->allowLinkSchemes(['http', 'https', 'mailto'])
-            ->allowAttribute('class', allowedElements: '*');
+            ->allowAttribute('class', allowedElements: '*')
+            // <h1> is the page title, <h2> is a block's own heading — body
+            // content starts at <h3>. blockElement() unwraps the tag and
+            // keeps the text rather than deleting it (dropElement()), so a
+            // pasted heading survives as a visible, reformattable paragraph.
+            ->blockElement('h1')
+            ->blockElement('h2');
     }
 }
