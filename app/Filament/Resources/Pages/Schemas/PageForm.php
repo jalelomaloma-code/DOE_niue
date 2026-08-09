@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
@@ -39,14 +40,38 @@ class PageForm
                     ->validationMessages([
                         'regex' => 'The slug can only use lower-case letters, numbers and hyphens. Capital letters, spaces and underscores are not allowed, because the website address cannot contain them.',
                     ])
-                    ->rule(fn () => function (string $attribute, $value, $fail) {
+                    ->rule(fn (Get $get) => function (string $attribute, $value, $fail) use ($get) {
                         if (! is_string($value)) {
                             return;
                         }
 
+                        // Exact matches stay unconditional, at every level. These
+                        // are the names of system routes, and the cost of a page
+                        // anywhere in the tree being called `admin` or `login` is
+                        // confusion for the Department, which is worth more than
+                        // the one slug it takes away.
                         if (in_array($value, Page::RESERVED_SLUGS, true)) {
                             $fail("The slug \"{$value}\" is reserved and would conflict with a system route.");
 
+                            return;
+                        }
+
+                        // The prefix rule is different, and has to be anchored the
+                        // way the ROUTE is anchored. Page::pathRoutePattern()'s
+                        // negative lookahead sits at the start of the whole path,
+                        // not at the start of each segment, so /about/administration
+                        // matches the catch-all perfectly well -- only a TOP-LEVEL
+                        // slug beginning with a reserved prefix is unreachable.
+                        // Applied to children as well, this rejected a legitimate
+                        // About-Us child page with a message ("The website could not
+                        // open this page") that was untrue of that page. Scoped to
+                        // match the route rather than reworded, because the rule was
+                        // wrong, not just its wording.
+                        //
+                        // A child moved back to the top level re-runs this: Filament
+                        // validates the whole form on every save, and $get() reads
+                        // the parent_id being submitted, not the stored one.
+                        if (filled($get('parent_id'))) {
                             return;
                         }
 
@@ -56,7 +81,7 @@ class PageForm
                         // "admin" and "storage".
                         foreach (Page::ROUTE_EXCLUDED_PREFIXES as $prefix) {
                             if (str_starts_with($value, $prefix)) {
-                                $fail("The slug \"{$value}\" starts with \"{$prefix}\", which is reserved for the system. The website could not open this page. Please choose a slug that begins with a different word.");
+                                $fail("The slug \"{$value}\" starts with \"{$prefix}\", which is reserved for the system, so a top-level page cannot use it. Choose a slug that begins with a different word, or place this page under a parent page.");
 
                                 return;
                             }

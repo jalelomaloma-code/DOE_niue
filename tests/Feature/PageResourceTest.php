@@ -377,10 +377,62 @@ it('rejects a slug that merely starts with a route-excluded prefix, and proves t
         // directly, bypassing the form, and confirm the router really does
         // refuse it. If someone relaxes the form rule without relaxing the
         // route (or the reverse), one of these two halves fails.
-        $seeded = Page::factory()->create(['title' => 'Seeded '.$prefix, 'slug' => $slug]);
+        //
+        // status is set explicitly. assertNotFound() has to mean "the ROUTE
+        // refused this path"; if the page were a draft it would 404 for an
+        // entirely different reason (PageController's published scope) and this
+        // half would pass while proving nothing. PageFactory happens to default
+        // to Published today, but relying on that makes the assertion's meaning
+        // depend on a factory default nothing here declares.
+        $seeded = Page::factory()->create([
+            'title' => 'Seeded '.$prefix,
+            'slug' => $slug,
+            'status' => ContentStatus::Published,
+            'published_at' => now()->subDay(),
+        ]);
 
         $this->withoutVite()->get('/'.$seeded->path)->assertNotFound();
     }
+});
+
+/*
+ * The prefix rule above must be anchored the way the ROUTE is anchored. The
+ * catch-all's negative lookahead sits at the start of the whole path, not at
+ * the start of each segment, so `/about/administration` matches it perfectly
+ * well -- only a TOP-LEVEL slug beginning with a reserved prefix is
+ * unreachable. Applying the rule to child slugs too rejected a legitimate
+ * About-Us child with a message ("The website could not open this page") that
+ * was simply untrue of that page.
+ */
+it('accepts a child page whose slug starts with a route-excluded prefix, and serves it', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $parent = Page::factory()->create([
+        'title' => 'About Us',
+        'slug' => 'about',
+        'parent_id' => null,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+
+    Livewire::test(CreatePage::class)
+        ->fillForm([
+            'title' => 'Administration',
+            'slug' => 'administration',
+            'parent_id' => $parent->id,
+            'status' => 'published',
+            'published_at' => now()->subDay(),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $child = Page::where('slug', 'administration')->firstOrFail();
+
+    // The half that proves the form was right to accept it: the real router
+    // serves the real path. Without this, relaxing the rule too far would look
+    // like a pass.
+    expect($child->path)->toBe('about/administration');
+    $this->withoutVite()->get('/'.$child->path)->assertOk()->assertSee('Administration');
 });
 
 it('rejects a slug with characters the route cannot match', function ($slug) {
