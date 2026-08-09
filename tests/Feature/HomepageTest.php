@@ -108,13 +108,36 @@ it('does not run a query per card to resolve featured images', function () {
     DB::flushQueryLog();
     DB::disableQueryLog();
 
-    // Without eager-loaded media, 4 programmes + 4 news + 3 projects +
-    // 5 documents each resolve their image via a separate lazy-loaded
-    // `media` query — at least 16 extra queries. A generous ceiling well
-    // below that catches a regression without being brittle to unrelated
-    // query-count drift. (Measured directly: 28 queries before the
-    // ->with('media') fix, 16 after.)
-    expect($queryCount)->toBeLessThan(25);
+    // Pinned to an exact budget, not a loose ceiling — toBeLessThan(25)
+    // let a real regression through silently: dropping with('media') from
+    // BOTH featuredOrLatest() builders (programmes and projects) while
+    // news and documents keep theirs still only reaches 21 (2 eager
+    // queries traded for 7 lazy per-card ones: 4 programmes + 3 projects
+    // seeded above), comfortably under 25.
+    //
+    // The 16 queries this request actually makes, in order, on a fresh
+    // test database (RefreshDatabase, no settings seeded yet):
+    //   1-2   homepage_settings: select (none found) + firstOrCreate insert
+    //   3     quick_links: active() select
+    //   4-5   programmes: featured() list + with('media') eager load
+    //   6-7   news_articles: published() list + with('media') eager load
+    //   8-9   projects: featured() list + with('media') eager load
+    //   10-11 documents: published() list + with('media') eager load
+    //   12    homepage_settings: lazy hero-image media lookup
+    //   13-15 site_settings (header's SiteSetting::current()): select
+    //         (none found) + firstOrCreate insert + fresh() re-select
+    //         (current() must re-fetch after insertGetId(), see
+    //         SiteSetting::current())
+    //   16    site_settings (footer's independent SiteSetting::current()
+    //         call): select — the row exists now, so just one query
+    //
+    // Content-section eager loading (4-11) is what this test exists to
+    // protect; the settings/quick-link queries (1-3, 12-16) are fixed
+    // overhead unrelated to card rendering. If a future spec legitimately
+    // changes that overhead (e.g. caching settings, adding a homepage
+    // section), update this number deliberately rather than loosening it
+    // back into a ceiling.
+    expect($queryCount)->toBe(16);
 });
 
 it('respects a curated sort_order in the fallback, not just the featured path', function () {
