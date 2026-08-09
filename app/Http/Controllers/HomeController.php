@@ -17,16 +17,22 @@ class HomeController extends Controller
         return view('home', [
             'homepage' => HomepageSetting::current(),
             'quickLinks' => QuickLink::active()->get(),
-            'programmes' => $this->featuredOrLatest(Programme::query(), 4, 'sort_order'),
-            'news' => NewsArticle::published()->with('category')->latest('published_at')->take(4)->get(),
-            'projects' => $this->featuredOrLatest(Project::query(), 3),
-            'documents' => Document::published()->with('category')->latest('published_date')->take(5)->get(),
+            'programmes' => $this->featuredOrLatest(Programme::query()->with('media'), 4, 'sort_order'),
+            'news' => NewsArticle::published()->with(['category', 'media'])->latest('published_at')->take(4)->get(),
+            'projects' => $this->featuredOrLatest(Project::query()->with('media'), 3),
+            'documents' => Document::published()->with(['category', 'media'])->latest('published_date')->take(5)->get(),
         ]);
     }
 
     /**
      * Featured items first; if nothing is flagged, fall back to the most
      * recent so a section never sits empty merely because nobody ticked a box.
+     *
+     * The fallback preserves whatever ordering the caller asked for. When an
+     * order column is given (e.g. Programme's `sort_order`), that ordering is
+     * a deliberate editorial choice by the Department and takes precedence
+     * over "most recent" even on the fallback path — recency is only the
+     * right default where no curated order exists.
      */
     private function featuredOrLatest(
         \Illuminate\Database\Eloquent\Builder $query,
@@ -41,8 +47,16 @@ class HomeController extends Controller
 
         $results = $featured->take($limit)->get();
 
-        return $results->isNotEmpty()
-            ? $results
-            : $query->published()->latest('published_at')->take($limit)->get();
+        if ($results->isNotEmpty()) {
+            return $results;
+        }
+
+        $fallback = $query->published();
+
+        $fallback = $orderColumn
+            ? $fallback->orderBy($orderColumn)
+            : $fallback->latest('published_at');
+
+        return $fallback->take($limit)->get();
     }
 }

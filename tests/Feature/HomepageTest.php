@@ -1,10 +1,13 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Models\Document;
 use App\Models\HomepageSetting;
 use App\Models\NewsArticle;
 use App\Models\Programme;
+use App\Models\Project;
 use App\Models\QuickLink;
+use Illuminate\Support\Facades\DB;
 
 it('renders hero content from the database', function () {
     HomepageSetting::current()->update([
@@ -76,4 +79,71 @@ it('renders active quick links', function () {
 
     $response->assertSee('Waste &amp; Recycling', false);
     $response->assertDontSee('Hidden Link');
+});
+
+it('does not run a query per card to resolve featured images', function () {
+    Programme::factory()->count(4)->create([
+        'is_featured' => true,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+    NewsArticle::factory()->count(4)->create([
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+    Project::factory()->count(3)->create([
+        'is_featured' => true,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+    Document::factory()->count(5)->create([
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+        'published_date' => now()->subDay(),
+    ]);
+
+    DB::enableQueryLog();
+    $this->withoutVite()->get('/')->assertOk();
+    $queryCount = count(DB::getQueryLog());
+    DB::flushQueryLog();
+    DB::disableQueryLog();
+
+    // Without eager-loaded media, 4 programmes + 4 news + 3 projects +
+    // 5 documents each resolve their image via a separate lazy-loaded
+    // `media` query — at least 16 extra queries. A generous ceiling well
+    // below that catches a regression without being brittle to unrelated
+    // query-count drift. (Measured directly: 28 queries before the
+    // ->with('media') fix, 16 after.)
+    expect($queryCount)->toBeLessThan(25);
+});
+
+it('respects a curated sort_order in the fallback, not just the featured path', function () {
+    // None of these are featured, so featuredOrLatest() falls through to its
+    // fallback query. sort_order is a deliberate editorial choice by the
+    // Department; the fallback must honour it rather than silently
+    // reverting to "most recent", which would discard that curation the
+    // moment nobody ticks "featured".
+    Programme::factory()->create([
+        'title' => 'Third In Order',
+        'sort_order' => 3,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDays(1),
+    ]);
+    Programme::factory()->create([
+        'title' => 'First In Order',
+        'sort_order' => 1,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDays(10),
+    ]);
+    Programme::factory()->create([
+        'title' => 'Second In Order',
+        'sort_order' => 2,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDays(5),
+    ]);
+
+    $response = $this->withoutVite()->get('/');
+
+    $response->assertOk();
+    $response->assertSeeInOrder(['First In Order', 'Second In Order', 'Third In Order']);
 });
