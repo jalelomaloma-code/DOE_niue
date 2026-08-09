@@ -1,5 +1,10 @@
 <?php
 
+use App\Enums\ContentStatus;
+use App\Models\Document;
+use App\Models\DocumentCategory;
+use App\Models\Programme;
+use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 
@@ -146,4 +151,55 @@ it('does not log a warning when an image block has alt text', function () {
     ]]);
 
     Log::shouldNotHaveReceived('warning');
+});
+
+it('lists only published documents', function () {
+    $category = DocumentCategory::create(['name' => 'Forms', 'slug' => 'forms', 'sort_order' => 0]);
+
+    Document::factory()->create([
+        'title' => 'Visible Form',
+        'document_category_id' => $category->id,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+    Document::factory()->create([
+        'title' => 'Draft Form',
+        'document_category_id' => $category->id,
+        'status' => ContentStatus::Draft,
+    ]);
+
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'documents_list', 'data' => ['heading' => 'Forms', 'category_id' => $category->id]],
+    ]]);
+
+    expect($html)->toContain('Visible Form')->and($html)->not->toContain('Draft Form');
+});
+
+it('lists only published programmes', function () {
+    Programme::factory()->create(['title' => 'Live Programme', 'status' => ContentStatus::Published, 'published_at' => now()->subDay()]);
+    Programme::factory()->create(['title' => 'Hidden Programme', 'status' => ContentStatus::Draft]);
+
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'programmes_list', 'data' => []],
+    ]]);
+
+    expect($html)->toContain('Live Programme')->and($html)->not->toContain('Hidden Programme');
+});
+
+it('renders contact details from site settings', function () {
+    SiteSetting::current()->update(['email' => 'environment@mail.gov.nu', 'address' => 'Alofi, Niue']);
+
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'contact_details', 'data' => ['heading' => 'Contact']],
+    ]]);
+
+    expect($html)->toContain('environment@mail.gov.nu')->and($html)->toContain('Alofi, Niue');
+});
+
+it('renders a documents block with no matching documents without error', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'documents_list', 'data' => ['heading' => 'Empty']],
+    ]]);
+
+    expect($html)->toContain('Empty');
 });
