@@ -76,6 +76,40 @@ it('unwraps h1 and h2 in body content but keeps their words, and leaves h3 untou
         ->and($clean)->toContain('<h3>Small</h3>');
 });
 
+/*
+ * Spec section 6: the allowlist "strips every attribute except `href` on
+ * links". A surviving `class` is not cosmetic -- `hidden` is compiled into
+ * the stylesheet (the header uses `hidden lg:flex`), so an editor could make
+ * a legal notice invisible on the rendered page while it still reads as
+ * present in the CMS, and a positioned `fixed inset-0 z-50` block could
+ * cover the page. The `prose` wrapper does all the styling the block set
+ * needs; no editor-supplied class is required by any partial under
+ * resources/views/components/blocks/ or by any seeded content.
+ */
+it('strips a class attribute but keeps the element and its text', function () {
+    $clean = RichTextSanitiser::sanitise('<p class="hidden">Legal notice</p>');
+
+    expect($clean)->not->toContain('class')
+        ->and($clean)->not->toContain('hidden')
+        ->and($clean)->toContain('<p>')
+        ->and($clean)->toContain('Legal notice');
+});
+
+it('strips layout-breaking classes from a block element', function () {
+    $clean = RichTextSanitiser::sanitise('<div class="fixed inset-0 z-50 bg-white">Overlay</div>');
+
+    expect($clean)->not->toContain('class')
+        ->and($clean)->not->toContain('fixed')
+        ->and($clean)->toContain('Overlay');
+});
+
+it('keeps href on a link -- the one attribute the allowlist permits', function () {
+    // Guards the fix from over-reaching: dropping allowAttribute('class')
+    // must not take href with it.
+    expect(RichTextSanitiser::sanitise('<a href="/waste-and-recycling">Local</a>'))
+        ->toContain('href="/waste-and-recycling"');
+});
+
 it('returns null unchanged', function () {
     expect(RichTextSanitiser::sanitise(null))->toBeNull();
 });

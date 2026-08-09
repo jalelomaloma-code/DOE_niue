@@ -62,7 +62,15 @@ class RichTextSanitiser
             ->allowSafeElements()
             ->allowRelativeLinks()
             ->allowLinkSchemes(['http', 'https', 'mailto'])
-            ->allowAttribute('class', allowedElements: '*')
+            // No allowAttribute() call at all, so `href` on links (granted by
+            // allowSafeElements()) is the only attribute that survives. In
+            // particular `class` is NOT allowed: the utility stylesheet is
+            // global, so `class="hidden"` would let an editor make content
+            // invisible on the rendered page while it still reads as present
+            // in the CMS, and `class="fixed inset-0 z-50"` would let a body
+            // paragraph cover the whole page. The `prose` wrapper in
+            // rich-text.blade.php does all the styling the block set needs —
+            // no partial and no seeded content supplies its own classes.
             // <h1> is the page title, <h2> is a block's own heading — body
             // content starts at <h3>. blockElement() unwraps the tag and
             // keeps the text rather than deleting it (dropElement()), so a
