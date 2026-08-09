@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 
 class Page extends Model
 {
@@ -36,6 +37,7 @@ class Page extends Model
     protected static function booted(): void
     {
         static::saving(function (Page $page): void {
+            $page->guardAgainstCyclicParent();
             $page->path = $page->computePath();
         });
 
@@ -75,6 +77,47 @@ class Page extends Model
         $parent = $this->parent_id ? self::find($this->parent_id) : null;
 
         return $parent ? $parent->path.'/'.$this->slug : $this->slug;
+    }
+
+    /**
+     * Refuse to save a page whose parent_id points at itself, or at any of
+     * its own descendants.
+     *
+     * Without this, the `saved` hook's cascade (which re-saves children
+     * whenever `path` changes) has no cycle detection: a page made its own
+     * ancestor produces a longer `path` on every pass, so `wasChanged('path')`
+     * never goes false and the cascade re-enters itself until the process
+     * runs out of memory or `path` overflows its column. A brand-new page
+     * (no id yet) cannot be its own ancestor, so this only walks the chain
+     * for existing pages whose parent_id is actually changing hands.
+     */
+    protected function guardAgainstCyclicParent(): void
+    {
+        if ($this->parent_id === null || ! $this->exists) {
+            return;
+        }
+
+        $ancestorId = $this->parent_id;
+        $seen = [];
+
+        while ($ancestorId !== null) {
+            if ($ancestorId === $this->id) {
+                throw new InvalidArgumentException(
+                    $this->parent_id === $this->id
+                        ? 'A page cannot be its own parent.'
+                        : 'A page cannot be a descendant of itself.'
+                );
+            }
+
+            // A pre-existing cycle elsewhere in the tree isn't this save's
+            // problem to solve; stop walking rather than loop forever.
+            if (isset($seen[$ancestorId])) {
+                break;
+            }
+            $seen[$ancestorId] = true;
+
+            $ancestorId = self::query()->whereKey($ancestorId)->value('parent_id');
+        }
     }
 
     /**
