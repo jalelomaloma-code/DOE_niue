@@ -17,6 +17,13 @@ class Page extends Model
 {
     use HasBlame, HasFactory, HasSeo, HasStatus;
 
+    /**
+     * Slugs that would shadow, or be shadowed by, a real route.
+     * Rejected at save time so an editor gets a validation message rather
+     * than an unexplainable 404 six months later.
+     */
+    public const RESERVED_SLUGS = ['admin', 'storage', 'livewire', 'api', 'login', 'logout'];
+
     protected $fillable = [
         'title', 'slug', 'parent_id', 'intro', 'content', 'sort_order',
         'show_in_section_nav', 'status', 'published_at', 'seo_title',
