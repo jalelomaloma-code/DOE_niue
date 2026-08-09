@@ -3,7 +3,7 @@
         ->with('category', 'media')
         ->when(! empty($data['category_id']), fn ($q) => $q->where('document_category_id', $data['category_id']))
         ->latest('published_date')
-        ->take($data['limit'] ?? 10)
+        ->take(min((int) ($data['limit'] ?? 10), 100))
         ->get();
 @endphp
 

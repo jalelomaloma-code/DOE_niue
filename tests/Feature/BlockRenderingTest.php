@@ -6,6 +6,7 @@ use App\Models\DocumentCategory;
 use App\Models\Programme;
 use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 it('renders a rich text block', function () {
@@ -175,6 +176,36 @@ it('lists only published documents', function () {
     expect($html)->toContain('Visible Form')->and($html)->not->toContain('Draft Form');
 });
 
+it('filters documents by category, excluding published documents in a different category', function () {
+    // The previous test alone can't prove the category_id filter runs at
+    // all: both its documents share one category, so published() excludes
+    // the draft regardless of whether filtering happens. This test uses
+    // two published documents in two different categories, so only the
+    // filter clause — not the status scope — can be responsible for the
+    // "Other Category Doc" exclusion.
+    $category = DocumentCategory::create(['name' => 'Forms', 'slug' => 'forms', 'sort_order' => 0]);
+    $other = DocumentCategory::create(['name' => 'Reports', 'slug' => 'reports', 'sort_order' => 1]);
+
+    Document::factory()->create([
+        'title' => 'Forms Doc',
+        'document_category_id' => $category->id,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+    Document::factory()->create([
+        'title' => 'Other Category Doc',
+        'document_category_id' => $other->id,
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'documents_list', 'data' => ['category_id' => $category->id]],
+    ]]);
+
+    expect($html)->toContain('Forms Doc')->and($html)->not->toContain('Other Category Doc');
+});
+
 it('lists only published programmes', function () {
     Programme::factory()->create(['title' => 'Live Programme', 'status' => ContentStatus::Published, 'published_at' => now()->subDay()]);
     Programme::factory()->create(['title' => 'Hidden Programme', 'status' => ContentStatus::Draft]);
@@ -202,4 +233,78 @@ it('renders a documents block with no matching documents without error', functio
     ]]);
 
     expect($html)->toContain('Empty');
+});
+
+it('renders a programmes block with no matching programmes without error', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'programmes_list', 'data' => ['heading' => 'No Programmes']],
+    ]]);
+
+    expect($html)->toContain('No Programmes');
+});
+
+it('renders contact details when every settings field is blank', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'contact_details', 'data' => ['heading' => 'Get in touch']],
+    ]]);
+
+    expect($html)->toContain('Get in touch');
+});
+
+it('clamps an absurd documents_list limit instead of running an unbounded query', function () {
+    // Task 6's Filament form clamps this at the UI layer (maxValue(50)), but
+    // that's usability only. A seeder, a raw DB write, or a hand-edited JSON
+    // blob bypasses the form entirely — this project has already been bitten
+    // by that exact split (document_category_id required in the form, but
+    // nullable at the column). The block itself must not trust the number.
+    //
+    // Asserting against rendered row count would be meaningless with only a
+    // handful of fixture rows (3 rows is <= 100 whether or not clamping
+    // happens at all). Inspect the executed SQL's LIMIT clause instead — it
+    // proves the clamp regardless of how much fixture data exists. Laravel's
+    // query grammar compiles LIMIT as a literal integer in the SQL text
+    // (Grammar::compileLimit returns 'limit '.(int) $limit), not as a bound
+    // placeholder, so the assertion is against the query string, not bindings.
+    DB::enableQueryLog();
+
+    Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'documents_list', 'data' => ['limit' => 10000]],
+    ]]);
+
+    $query = collect(DB::getQueryLog())->first(fn ($q) => str_contains($q['query'], 'from "documents"'));
+
+    expect($query)->not->toBeNull()
+        ->and($query['query'])->toContain('limit 100')
+        ->and($query['query'])->not->toContain('limit 10000');
+});
+
+it('clamps an absurd programmes_list limit instead of running an unbounded query', function () {
+    DB::enableQueryLog();
+
+    Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'programmes_list', 'data' => ['limit' => 10000]],
+    ]]);
+
+    $query = collect(DB::getQueryLog())->first(fn ($q) => str_contains($q['query'], 'from "programmes"'));
+
+    expect($query)->not->toBeNull()
+        ->and($query['query'])->toContain('limit 100')
+        ->and($query['query'])->not->toContain('limit 10000');
+});
+
+it('casts a string limit from JSON instead of passing it through to the query builder unchanged', function () {
+    // A block's data comes from JSON, where a Filament number field can
+    // round-trip as a numeric string. min() on a string works "usually" via
+    // PHP's loose comparison, but (int) cast makes the intent explicit and
+    // protects the take() call, which requires a real int.
+    DB::enableQueryLog();
+
+    Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'documents_list', 'data' => ['limit' => '3']],
+    ]]);
+
+    $query = collect(DB::getQueryLog())->first(fn ($q) => str_contains($q['query'], 'from "documents"'));
+
+    expect($query)->not->toBeNull()
+        ->and($query['query'])->toContain('limit 3');
 });

@@ -2,7 +2,7 @@
     $programmes = \App\Models\Programme::published()
         ->with('media')
         ->orderBy('sort_order')
-        ->take($data['limit'] ?? 12)
+        ->take(min((int) ($data['limit'] ?? 12), 100))
         ->get();
 @endphp
 
