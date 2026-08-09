@@ -21,8 +21,20 @@ class Page extends Model
      * Slugs that would shadow, or be shadowed by, a real route.
      * Rejected at save time so an editor gets a validation message rather
      * than an unexplainable 404 six months later.
+     *
+     * `up` is Laravel's health endpoint, configured by the `health: '/up'`
+     * argument to withRouting() in bootstrap/app.php. It is registered by the
+     * framework, ahead of routes/web.php, so it never appears in that file and
+     * is easy to miss when reading for route collisions — but a page slugged
+     * `up` saves cleanly, lists as Published, and serves the health check's
+     * output instead of the page, with nothing logged.
+     *
+     * PageResourceTest walks the router and fails if any route registered
+     * before the catch-all is missing from this list or from
+     * ROUTE_EXCLUDED_PREFIXES below, so a future route addition cannot
+     * reintroduce the same class of silent 404 unnoticed.
      */
-    public const RESERVED_SLUGS = ['admin', 'storage', 'livewire', 'api', 'login', 'logout'];
+    public const RESERVED_SLUGS = ['admin', 'storage', 'livewire', 'api', 'login', 'logout', 'up'];
 
     /**
      * Path prefixes the catch-all route refuses to match.

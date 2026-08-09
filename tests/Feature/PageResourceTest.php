@@ -6,6 +6,7 @@ use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Filament\Resources\Pages\Pages\EditPage;
 use App\Models\Page;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
@@ -276,6 +277,86 @@ it('rejects a non-numeric position rather than silently storing zero', function 
  * prefix-based and its charset is narrower than "any string".
  * ---------------------------------------------------------------------------
  */
+
+/*
+ * `up` is the fourth instance of this defect. bootstrap/app.php passes
+ * health: '/up' to withRouting(), and Laravel registers that route ahead of
+ * routes/web.php -- so it shadows the catch-all, but it appears in no route
+ * file, which is why three passes over routes/web.php missed it.
+ */
+it('rejects a slug that collides with Laravel\'s health endpoint, and proves the router could not have served it', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    Livewire::test(CreatePage::class)
+        ->fillForm(['title' => 'Up', 'slug' => 'up'])
+        ->call('create')
+        ->assertHasFormErrors(['slug']);
+
+    expect(Page::where('slug', 'up')->exists())->toBeFalse();
+
+    // The other half: seed the row directly and confirm /up really is the
+    // health endpoint and not the page. Asserting a 404 would be wrong here --
+    // the route exists and returns 200 -- so assert on the body instead.
+    $seeded = Page::factory()->create([
+        'title' => 'Seeded Up Page',
+        'slug' => 'up',
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+    ]);
+
+    $this->withoutVite()->get('/'.$seeded->path)->assertDontSee('Seeded Up Page');
+});
+
+/*
+ * The generalisation, derived from the router rather than maintained by hand.
+ * Three rounds of review each found one more route the constants did not know
+ * about; this fails the moment a fourth appears, without anyone having to
+ * remember. It reads the real route table, so a route registered by the
+ * framework or by a package (as /up is) counts exactly the same as one written
+ * in routes/web.php.
+ */
+it('reserves every path a route registered before the page catch-all would shadow', function () {
+    foreach (Route::getRoutes() as $route) {
+        if ($route->getName() === 'pages.show') {
+            continue; // The catch-all itself.
+        }
+
+        // Substitute a plausible slug for each parameter: the question is
+        // whether this route can occupy a path shape the catch-all also serves,
+        // and `storage/{path}` occupies `storage/anything` just as surely as a
+        // literal would.
+        $segments = explode('/', preg_replace('/\{[^}]+\}/', 'x', $route->uri()));
+
+        // Deeper than the catch-all serves, so no Page can have this path.
+        if (count($segments) > Page::MAX_DEPTH) {
+            continue;
+        }
+
+        // Outside the slug charset (e.g. `livewire-.../livewire.js`), so the
+        // catch-all's `where` constraint would refuse it anyway.
+        foreach ($segments as $segment) {
+            if (! preg_match('/^'.Page::SLUG_PATTERN.'$/', $segment)) {
+                continue 2;
+            }
+        }
+
+        // A Page could legitimately be given this path, and this route would
+        // win. The CMS has to refuse it.
+        $slug = $segments[0];
+        $reserved = in_array($slug, Page::RESERVED_SLUGS, true);
+
+        foreach (Page::ROUTE_EXCLUDED_PREFIXES as $prefix) {
+            $reserved = $reserved || str_starts_with($slug, $prefix);
+        }
+
+        expect($reserved)->toBeTrue(
+            "The route \"{$route->uri()}\" is registered before the page catch-all and would "
+            ."shadow a page slugged \"{$slug}\". Add it to Page::RESERVED_SLUGS or "
+            .'Page::ROUTE_EXCLUDED_PREFIXES, or the page will save cleanly, list as '
+            .'Published, and never be reachable.'
+        );
+    }
+});
 
 it('rejects a slug that merely starts with a route-excluded prefix, and proves the router could not have served it', function () {
     $this->actingAs(pageUser(UserRole::WebsiteManager));
