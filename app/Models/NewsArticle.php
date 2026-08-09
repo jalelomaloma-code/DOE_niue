@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Enums\ContentStatus;
 use App\Models\Concerns\HasBlame;
 use App\Models\Concerns\HasFeaturedImage;
+use App\Models\Concerns\HasSanitisedRichText;
 use App\Models\Concerns\HasSeo;
 use App\Models\Concerns\HasStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +18,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class NewsArticle extends Model implements HasMedia
 {
-    use HasBlame, HasFactory, HasFeaturedImage, HasSeo, HasStatus, InteractsWithMedia {
+    use HasBlame, HasFactory, HasFeaturedImage, HasSanitisedRichText, HasSeo, HasStatus, InteractsWithMedia {
         HasFeaturedImage::registerMediaCollections insteadof InteractsWithMedia;
         HasFeaturedImage::registerMediaConversions insteadof InteractsWithMedia;
     }
@@ -38,6 +40,17 @@ class NewsArticle extends Model implements HasMedia
             'facebook_posted_at' => 'datetime',
             'is_demo' => 'boolean',
         ];
+    }
+
+    /**
+     * `body` is the only rich-text (unescaped-on-render) column here --
+     * `excerpt` is a plain Textarea and renders escaped. Sanitising in the
+     * model rather than in NewsArticleForm covers seeders, tinker, imports
+     * and any future non-Filament writer, none of which go through a form.
+     */
+    protected function body(): Attribute
+    {
+        return Attribute::set(fn (?string $value) => $this->sanitiseRichText($value));
     }
 
     public function category(): BelongsTo

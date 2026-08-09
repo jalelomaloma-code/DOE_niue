@@ -32,3 +32,23 @@ it('reports isPublished() as true on a freshly loaded record, not just the in-me
 
     expect($fresh->isPublished())->toBeTrue();
 });
+
+/*
+ * Sanitisation lives on the model, not on ProgrammeForm, so it also covers
+ * seeders, tinker and any future non-Filament writer. This test writes
+ * straight through the factory -- no Filament, no Tiptap -- so BOTH
+ * assertions below are load-bearing: nothing upstream of the mutator
+ * touches either tag on this path.
+ */
+it('strips a script tag and unwraps a pasted h1 from the body on save', function () {
+    $programme = Programme::factory()->create([
+        'body' => '<h1>Pasted Heading</h1><p>Safe</p><script>alert(1)</script>',
+    ]);
+
+    $stored = Programme::findOrFail($programme->id)->body;
+
+    expect($stored)->not->toContain('<script')
+        ->and($stored)->not->toContain('<h1')
+        ->and($stored)->toContain('Pasted Heading')
+        ->and($stored)->toContain('Safe');
+});

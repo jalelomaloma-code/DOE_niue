@@ -17,7 +17,11 @@
             <div class="h-64 w-full bg-brand/10 sm:h-96" aria-hidden="true"></div>
         @endif
 
-        {{-- Sanitised on save by RichTextSanitiser; never render unsanitised input. --}}
+        {{-- Sanitised on save by the `body` mutator on the Programme model
+             (App\Models\Concerns\HasSanitisedRichText -> RichTextSanitiser),
+             NOT by ProgrammeForm -- so seeder, tinker and import writes are
+             covered too, not just Filament saves. Never render unsanitised
+             input. --}}
         <div class="prose prose-slate mx-auto max-w-3xl px-4 py-8">
             {!! $programme->body !!}
         </div>

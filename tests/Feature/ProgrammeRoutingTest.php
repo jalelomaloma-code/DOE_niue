@@ -107,3 +107,29 @@ it('resolves the three-segment programme detail route ahead of the page catch-al
         ->assertOk()
         ->assertSee('Coral Watch Programme');
 });
+
+/*
+ * Spec 2 success criterion 4: heading hierarchy is correct on every page
+ * regardless of what editors typed. The first test in this file also counts
+ * <h1>s, but its factory body contains no heading at all, so it would pass
+ * even with sanitisation removed entirely. This one deliberately pastes an
+ * <h1> into the body and drives the real render path, so the count is only
+ * 1 if the model mutator actually unwrapped it.
+ */
+it('renders exactly one h1 even when the programme body contains a pasted h1', function () {
+    $programme = Programme::factory()->create([
+        'title' => 'Lagoon Water Quality Programme',
+        'slug' => 'lagoon-water-quality',
+        'status' => ContentStatus::Published,
+        'published_at' => now()->subDay(),
+        'body' => '<h1>Background</h1><p>Monitoring the lagoon.</p>',
+    ]);
+
+    $html = $this->withoutVite()->get("/our-work/environment-programmes/{$programme->slug}")
+        ->assertOk()
+        ->getContent();
+
+    expect(substr_count($html, '<h1'))->toBe(1);
+    // The words survive as a paragraph -- blockElement(), not dropElement().
+    expect($html)->toContain('Background');
+});

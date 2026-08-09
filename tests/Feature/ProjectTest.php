@@ -42,3 +42,17 @@ it('casts status and project_status independently on a freshly loaded record', f
         ->and($fresh->project_status)->toBe(ProjectStatus::Completed)
         ->and($fresh->isPublished())->toBeTrue();
 });
+
+// See ProgrammeTest for why both assertions are load-bearing on this path.
+it('strips a script tag and unwraps a pasted h1 from the body on save', function () {
+    $project = Project::factory()->create([
+        'body' => '<h1>Pasted Heading</h1><p>Safe</p><script>alert(1)</script>',
+    ]);
+
+    $stored = Project::findOrFail($project->id)->body;
+
+    expect($stored)->not->toContain('<script')
+        ->and($stored)->not->toContain('<h1')
+        ->and($stored)->toContain('Pasted Heading')
+        ->and($stored)->toContain('Safe');
+});

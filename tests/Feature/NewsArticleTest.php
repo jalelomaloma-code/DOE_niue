@@ -44,3 +44,17 @@ it('casts status to ContentStatus and reports isPublished correctly on a freshly
     expect($fresh->status)->toBe(ContentStatus::Published)
         ->and($fresh->isPublished())->toBeTrue();
 });
+
+// See ProgrammeTest for why both assertions are load-bearing on this path.
+it('strips a script tag and unwraps a pasted h1 from the body on save', function () {
+    $article = NewsArticle::factory()->create([
+        'body' => '<h1>Pasted Heading</h1><p>Safe</p><script>alert(1)</script>',
+    ]);
+
+    $stored = NewsArticle::findOrFail($article->id)->body;
+
+    expect($stored)->not->toContain('<script')
+        ->and($stored)->not->toContain('<h1')
+        ->and($stored)->toContain('Pasted Heading')
+        ->and($stored)->toContain('Safe');
+});
