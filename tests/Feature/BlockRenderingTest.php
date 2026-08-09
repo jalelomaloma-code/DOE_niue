@@ -79,7 +79,21 @@ it('renders a callout with its tone', function () {
         ['type' => 'callout', 'data' => ['heading' => 'Note', 'body' => 'Collection changes', 'tone' => 'warning']],
     ]]);
 
-    expect($html)->toContain('Note')->and($html)->toContain('Collection changes');
+    // 'Note' and 'Collection changes' come from heading/body regardless of
+    // tone — the load-bearing assertion is the accent class actually firing.
+    expect($html)->toContain('Note')
+        ->and($html)->toContain('Collection changes')
+        ->and($html)->toContain('bg-accent');
+});
+
+it('does not apply the accent tone to an info callout', function () {
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'callout', 'data' => ['heading' => 'Note', 'body' => 'Collection changes', 'tone' => 'info']],
+    ]]);
+
+    // Pairs with the warning-tone test above: a callout view that hardcoded
+    // bg-accent regardless of tone would pass the warning case alone.
+    expect($html)->not->toContain('bg-accent');
 });
 
 it('renders a card grid and omits links for cards without a url', function () {
@@ -91,8 +105,18 @@ it('renders a card grid and omits links for cards without a url', function () {
     ]]);
 
     expect($html)->toContain('Household')
-        ->and($html)->toContain('/waste-and-recycling')
-        ->and($html)->toContain('Green waste');
+        ->and($html)->toContain('/waste-and-recycling');
+
+    // Scope the "no link" assertion to the specific card without a url — a
+    // blanket assertion that the whole page contains no <a> at all would
+    // also fail against the first card's legitimate link. Split on each
+    // <li> boundary (there's no nesting) rather than a lazy regex, which
+    // would happily cross into the next card's </li> and swallow its <a>.
+    $cards = preg_split('/(?=<li)/', $html);
+    $greenWasteCard = collect($cards)->first(fn ($card) => str_contains($card, 'Green waste'));
+
+    expect($greenWasteCard)->not->toBeNull()
+        ->and($greenWasteCard)->not->toContain('<a');
 });
 
 it('renders an image block without a caption', function () {
@@ -101,4 +125,25 @@ it('renders an image block without a caption', function () {
     ]]);
 
     expect($html)->toContain('alt="Reef"');
+});
+
+it('logs a warning when an image block renders without alt text', function () {
+    Log::spy();
+
+    $html = Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'image', 'data' => ['url' => '/storage/demo.jpg', 'alt' => '']],
+    ]]);
+
+    expect($html)->toContain('alt=""');
+    Log::shouldHaveReceived('warning')->once();
+});
+
+it('does not log a warning when an image block has alt text', function () {
+    Log::spy();
+
+    Blade::render('<x-page.content :blocks="$blocks" />', ['blocks' => [
+        ['type' => 'image', 'data' => ['url' => '/storage/demo.jpg', 'alt' => 'Reef']],
+    ]]);
+
+    Log::shouldNotHaveReceived('warning');
 });
