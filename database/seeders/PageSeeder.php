@@ -35,6 +35,7 @@ class PageSeeder extends Seeder
         $about = $this->createPage([
             'title' => 'About Us',
             'slug' => 'about',
+            'sort_order' => 0,
             'intro' => 'Learn about the Department, its mandate and the people behind its work.',
             'content' => [
                 $this->richText(
@@ -48,6 +49,7 @@ class PageSeeder extends Seeder
             'title' => 'About the Department',
             'slug' => 'about-the-department',
             'parent_id' => $about->id,
+            'sort_order' => 0,
             'intro' => 'An overview of the Department\'s role and areas of responsibility.',
             'content' => [
                 $this->richText(
@@ -61,6 +63,7 @@ class PageSeeder extends Seeder
             'title' => 'Mandate',
             'slug' => 'mandate',
             'parent_id' => $about->id,
+            'sort_order' => 1,
             'intro' => 'The legal and policy basis for the Department\'s work.',
             'content' => [
                 $this->richText(
@@ -74,6 +77,7 @@ class PageSeeder extends Seeder
             'title' => 'Mission & Vision',
             'slug' => 'mission-and-vision',
             'parent_id' => $about->id,
+            'sort_order' => 2,
             'intro' => 'What the Department is working towards, and why.',
             'content' => [
                 $this->richText(
@@ -91,6 +95,7 @@ class PageSeeder extends Seeder
             'title' => 'Our Team',
             'slug' => 'our-team',
             'parent_id' => $about->id,
+            'sort_order' => 3,
             'intro' => 'The people who lead and deliver the Department\'s programmes.',
             'content' => [
                 $this->block('team_grid', ['heading' => 'Meet the team']),
@@ -100,6 +105,7 @@ class PageSeeder extends Seeder
         $ourWork = $this->createPage([
             'title' => 'Our Work',
             'slug' => 'our-work',
+            'sort_order' => 1,
             'intro' => 'Conservation, waste, climate and biodiversity programmes, and the projects that deliver them.',
             'content' => [
                 $this->richText(
@@ -127,6 +133,7 @@ class PageSeeder extends Seeder
             'title' => 'Environment Programmes',
             'slug' => 'environment-programmes',
             'parent_id' => $ourWork->id,
+            'sort_order' => 0,
             'intro' => 'An overview of every current Department programme.',
             'content' => [
                 $this->richText(
@@ -141,6 +148,7 @@ class PageSeeder extends Seeder
             'title' => 'Waste & Recycling',
             'slug' => 'waste-and-recycling',
             'parent_id' => $ourWork->id,
+            'sort_order' => 1,
             'intro' => 'Waste services, recycling and disposal guidance.',
             'content' => [
                 $this->richText(
@@ -166,6 +174,7 @@ class PageSeeder extends Seeder
             'title' => 'Biodiversity & Conservation',
             'slug' => 'biodiversity-and-conservation',
             'parent_id' => $ourWork->id,
+            'sort_order' => 2,
             'intro' => 'Protecting native species and habitats.',
             'content' => [
                 $this->richText(
@@ -184,6 +193,7 @@ class PageSeeder extends Seeder
             'title' => 'Climate & Marine',
             'slug' => 'climate-and-marine',
             'parent_id' => $ourWork->id,
+            'sort_order' => 3,
             'intro' => 'Climate resilience and marine protection.',
             'content' => [
                 $this->richText(
@@ -201,6 +211,7 @@ class PageSeeder extends Seeder
         $this->createPage([
             'title' => 'Contact Us',
             'slug' => 'contact',
+            'sort_order' => 2,
             'intro' => 'Get in touch with the Department of Environment.',
             'content' => [
                 $this->richText(
@@ -214,6 +225,7 @@ class PageSeeder extends Seeder
         $this->createPage([
             'title' => 'Privacy',
             'slug' => 'privacy',
+            'sort_order' => 3,
             'intro' => 'How the Department handles personal information.',
             'show_in_section_nav' => false,
             'content' => [
@@ -227,6 +239,7 @@ class PageSeeder extends Seeder
         $this->createPage([
             'title' => 'Terms',
             'slug' => 'terms',
+            'sort_order' => 4,
             'intro' => 'Terms of use for this website.',
             'show_in_section_nav' => false,
             'content' => [
@@ -240,6 +253,7 @@ class PageSeeder extends Seeder
         $this->createPage([
             'title' => 'Accessibility',
             'slug' => 'accessibility',
+            'sort_order' => 5,
             'intro' => 'Our commitment to an accessible website.',
             'show_in_section_nav' => false,
             'content' => [
@@ -252,7 +266,7 @@ class PageSeeder extends Seeder
     }
 
     /**
-     * @param  array{title: string, slug: string, intro?: string, content?: array, parent_id?: int|null, show_in_section_nav?: bool}  $attributes
+     * @param  array{title: string, slug: string, intro?: string, content?: array, parent_id?: int|null, sort_order?: int, show_in_section_nav?: bool}  $attributes
      */
     private function createPage(array $attributes): Page
     {
@@ -262,7 +276,13 @@ class PageSeeder extends Seeder
             'parent_id' => $attributes['parent_id'] ?? null,
             'intro' => $attributes['intro'] ?? null,
             'content' => $attributes['content'] ?? [],
-            'sort_order' => 0,
+            // Explicit per call, matching the order the brief lists each
+            // page's children in -- Page::children() orders by this column,
+            // so leaving it at a shared default of 0 would let display order
+            // fall back to whatever the database returns for ties (insertion
+            // order today, but not guaranteed across a reseed or a changed
+            // query plan).
+            'sort_order' => $attributes['sort_order'] ?? 0,
             'show_in_section_nav' => $attributes['show_in_section_nav'] ?? true,
             'status' => ContentStatus::Published,
             'published_at' => now()->subWeek(),
