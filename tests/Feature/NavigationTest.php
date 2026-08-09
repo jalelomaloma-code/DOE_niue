@@ -52,6 +52,34 @@ it('seeds the six navigation items', function () {
     expect(NavigationItem::active()->count())->toBe(6);
 });
 
+it('re-seeding after a URL change updates the existing row instead of leaving a stale duplicate', function () {
+    // The seeder is keyed on label, not url, precisely because the six URLs
+    // in NavigationItemSeeder are placeholders for routes later specs will
+    // change. Keying on url would make a URL edit + reseed insert a new row
+    // and leave the old, still-active row behind live in the header. This
+    // test pins that behaviour and must fail against url-keying.
+    $this->seed(\Database\Seeders\NavigationItemSeeder::class);
+
+    expect(NavigationItem::count())->toBe(6);
+
+    // Simulate what a future edit to NavigationItemSeeder::run() would
+    // produce: the "Resources" row's url has drifted from what the seeder's
+    // source array currently says (e.g. the real route landed at a
+    // different path than the placeholder). Re-running the *unchanged*
+    // seeder should then update that row back to the seeder's url — keyed
+    // on label — rather than leaving it alone and inserting a second row
+    // for '/resources'.
+    $resourcesItem = NavigationItem::where('label', 'Resources')->firstOrFail();
+    $resourcesItem->update(['url' => '/resources-OLD-PLACEHOLDER']);
+
+    $this->seed(\Database\Seeders\NavigationItemSeeder::class);
+
+    expect(NavigationItem::count())->toBe(6)
+        ->and(NavigationItem::where('label', 'Resources')->count())->toBe(1)
+        ->and(NavigationItem::where('label', 'Resources')->value('url'))->toBe('/resources')
+        ->and(NavigationItem::where('url', '/resources-OLD-PLACEHOLDER')->exists())->toBeFalse();
+});
+
 it('accepts a site-relative url through the form', function () {
     $this->actingAs(navigationPanelUser(UserRole::SuperAdmin));
 

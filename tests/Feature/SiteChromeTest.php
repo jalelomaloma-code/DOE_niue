@@ -26,7 +26,18 @@ it('shows the government identity and contact details from the database', functi
 });
 
 it('marks the current navigation item with aria-current', function () {
-    $this->withoutVite()->get('/')->assertSee('aria-current="page"', false);
+    // Asserting occurrence COUNT, not just presence: the header renders two
+    // independent lists server-side (desktop <ul> + mobile <details>, both
+    // unconditionally present in the HTML — a closed <details> hides its
+    // body at the browser via shadow-DOM slot assignment, not by omitting
+    // it from the response). A regression in only one loop's $isCurrent
+    // logic is invisible to assertSee(), since the other loop's correct
+    // output still makes the string present somewhere on the page. Exactly
+    // 2 occurrences (one per list) is the only assertion that can catch a
+    // one-list-only break.
+    $content = $this->withoutVite()->get('/')->getContent();
+
+    expect(substr_count($content, 'aria-current="page"'))->toBe(2);
 });
 
 it('renders a branded 404 page', function () {
