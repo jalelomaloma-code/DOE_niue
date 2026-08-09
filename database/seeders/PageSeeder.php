@@ -8,7 +8,6 @@ use App\Models\Page;
 use App\Support\DemoImageGenerator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 
 /**
  * Populates the full information architecture with demo pages so every
