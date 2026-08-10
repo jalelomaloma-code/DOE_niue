@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         current = (index + slides.length) % slides.length;
 
         slides.forEach((slide, slideIndex) => {
-            slide.classList.toggle('opacity-45', slideIndex === current);
+            slide.classList.toggle('opacity-65', slideIndex === current);
             slide.classList.toggle('opacity-0', slideIndex !== current);
         });
 

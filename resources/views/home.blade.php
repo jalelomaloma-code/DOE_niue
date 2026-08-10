@@ -18,7 +18,7 @@
                      data-hero-slide
                      @class([
                          'absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-700',
-                         'opacity-45' => $index === 0,
+                         'opacity-65' => $index === 0,
                      ])>
             @endforeach
         </div>
