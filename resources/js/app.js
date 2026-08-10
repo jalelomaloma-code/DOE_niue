@@ -29,3 +29,79 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.querySelector('[data-hero-slider]');
+
+    if (!slider) return;
+
+    const slides = [...slider.querySelectorAll('[data-hero-slide]')];
+    const dots = [...slider.querySelectorAll('[data-hero-dot]')];
+    const previous = slider.querySelector('[data-hero-prev]');
+    const next = slider.querySelector('[data-hero-next]');
+
+    if (slides.length < 2) return;
+
+    let current = 0;
+    let timer = null;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const show = (index) => {
+        current = (index + slides.length) % slides.length;
+
+        slides.forEach((slide, slideIndex) => {
+            slide.classList.toggle('opacity-45', slideIndex === current);
+            slide.classList.toggle('opacity-0', slideIndex !== current);
+        });
+
+        dots.forEach((dot, dotIndex) => {
+            dot.classList.toggle('bg-white', dotIndex === current);
+            dot.classList.toggle('bg-white/20', dotIndex !== current);
+
+            if (dotIndex === current) {
+                dot.setAttribute('aria-current', 'true');
+            } else {
+                dot.removeAttribute('aria-current');
+            }
+        });
+    };
+
+    const stop = () => {
+        if (timer) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    };
+
+    const start = () => {
+        if (!reduceMotion) {
+            stop();
+            timer = window.setInterval(() => show(current + 1), 6500);
+        }
+    };
+
+    previous?.addEventListener('click', () => {
+        show(current - 1);
+        start();
+    });
+
+    next?.addEventListener('click', () => {
+        show(current + 1);
+        start();
+    });
+
+    dots.forEach((dot) => {
+        dot.addEventListener('click', () => {
+            show(Number(dot.dataset.heroDot));
+            start();
+        });
+    });
+
+    slider.addEventListener('mouseenter', stop);
+    slider.addEventListener('mouseleave', start);
+    slider.addEventListener('focusin', stop);
+    slider.addEventListener('focusout', start);
+
+    show(0);
+    start();
+});

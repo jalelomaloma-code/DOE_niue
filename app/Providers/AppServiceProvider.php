@@ -29,7 +29,25 @@ class AppServiceProvider extends ServiceProvider
             // header renders two lists (desktop + mobile disclosure) from
             // the same data, so sharing it through the composer keeps that
             // to one query instead of two.
-            $view->with('navigation', NavigationItem::active()->get());
+            $navigation = NavigationItem::active()->get();
+
+            $view->with('navigation', $navigation);
+            $view->with('primaryNavigation', collect([
+                (object) ['label' => 'Home', 'url' => '/'],
+                (object) ['label' => 'About Us', 'url' => '/about'],
+                (object) [
+                    'label' => 'Branches',
+                    'url' => '/our-work',
+                    'children' => [
+                        (object) ['label' => 'Environmental Governance', 'url' => '/our-work/environmental-governance'],
+                        (object) ['label' => 'Biodiversity and Conservation', 'url' => '/our-work/biodiversity-and-conservation'],
+                        (object) ['label' => 'Climate Change and Ozone', 'url' => '/our-work/climate-change-and-ozone'],
+                        (object) ['label' => 'Waste Management and Pollution Control', 'url' => '/our-work/waste-management-and-pollution-control'],
+                    ],
+                ],
+                (object) ['label' => 'Resources', 'url' => '/resources'],
+                (object) ['label' => 'Contact Us', 'url' => '/contact'],
+            ]));
         });
     }
 }

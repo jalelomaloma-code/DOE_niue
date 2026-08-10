@@ -3,6 +3,15 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/news', [\App\Http\Controllers\NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{slug}', [\App\Http\Controllers\NewsController::class, 'show'])->name('news.show');
+Route::get('/resources', [\App\Http\Controllers\ResourceController::class, 'index'])->name('resources.index');
+Route::get('/our-work/projects', [\App\Http\Controllers\ProjectController::class, 'index'])->name('projects.index');
+Route::get('/our-work/projects/{slug}', [\App\Http\Controllers\ProjectController::class, 'show'])->name('projects.show');
+Route::get('/our-work/environmental-governance', [\App\Http\Controllers\BranchController::class, 'environmentalGovernance'])->name('branches.environmental-governance');
+Route::get('/our-work/climate-change-and-ozone', [\App\Http\Controllers\BranchController::class, 'climateChangeAndOzone'])->name('branches.climate-change-and-ozone');
+Route::get('/our-work/waste-management-and-pollution-control', [\App\Http\Controllers\BranchController::class, 'wasteManagementAndPollutionControl'])->name('branches.waste-management-and-pollution-control');
+Route::get('/report-an-environmental-issue', [\App\Http\Controllers\ReportIssueController::class, 'show'])->name('report-issue.show');
 
 /*
  * Explicit programme detail route. Three path segments — beyond what the

@@ -1,11 +1,8 @@
 @props(['article'])
 
 <article class="flex h-full flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
-    @if ($url = $article->featuredImageUrl())
-        <img src="{{ $url }}" alt="{{ $article->featuredImageAlt() ?? '' }}" class="h-40 w-full object-cover">
-    @else
-        <div class="h-40 w-full bg-brand/10" aria-hidden="true"></div>
-    @endif
+    @php $imageUrl = \App\Support\DemoImages::cardFor($article); @endphp
+    <img src="{{ $imageUrl }}" alt="{{ $article->featuredImageAlt() ?? '' }}" class="h-40 w-full object-cover">
 
     <div class="flex flex-1 flex-col p-6">
         <p class="text-sm text-text/70">
@@ -24,8 +21,7 @@
             <p class="mt-2 flex-1 text-sm text-text">{{ $article->excerpt }}</p>
         @endif
 
-        {{-- TODO(spec-3): link to the news article show route once it exists. --}}
-        <a href="#" class="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
+        <a href="{{ route('news.show', $article->slug) }}" class="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
             Read more<span class="sr-only"> about {{ $article->title }}</span>
         </a>
     </div>

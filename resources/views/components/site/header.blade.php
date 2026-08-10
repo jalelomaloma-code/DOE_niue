@@ -2,6 +2,8 @@
     <div class="on-dark bg-brand text-white">
         <div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
             <a href="{{ url('/') }}" class="flex items-center gap-3">
+                @php $logo = $settings->getFirstMediaUrl('logo') ?: asset('images/niue-doe-logo.png'); @endphp
+                <img src="{{ $logo }}" alt="" aria-hidden="true" class="h-14 w-14 shrink-0 rounded bg-white p-1">
                 <div>
                     <p class="text-lg font-bold leading-tight">{{ $settings->department_name }}</p>
                     <p class="text-sm text-white/80">{{ $settings->government_name }}</p>
@@ -14,18 +16,47 @@
         {{-- Desktop: a plain, permanently visible list — no disclosure
              involved, so it's just an ordinary display override. --}}
         <ul class="mx-auto hidden max-w-7xl flex-wrap px-4 lg:flex">
-            @foreach ($navigation as $item)
-                @php $isCurrent = request()->is(ltrim($item->url, '/') ?: '/'); @endphp
+            @foreach ($primaryNavigation as $item)
+                @php
+                    $children = collect($item->children ?? []);
+                    $isCurrent = request()->is(ltrim($item->url, '/') ?: '/')
+                        || $children->contains(fn ($child) => request()->is(ltrim($child->url, '/')));
+                @endphp
                 <li>
-                    <a href="{{ $item->url }}"
-                       @if ($isCurrent) aria-current="page" @endif
-                       @class([
-                           'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
-                           'border-accent' => $isCurrent,
-                           'border-transparent' => ! $isCurrent,
-                       ])>
-                        {{ $item->label }}
-                    </a>
+                    @if ($children->isNotEmpty())
+                        <details class="group relative">
+                            <summary
+                                @class([
+                                    'inline-flex min-h-11 cursor-pointer list-none items-center gap-1 border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent marker:hidden [&::-webkit-details-marker]:hidden',
+                                    'border-accent' => $isCurrent,
+                                    'border-transparent' => ! $isCurrent,
+                                ])>
+                                {{ $item->label }}
+                                <svg aria-hidden="true" viewBox="0 0 20 20" class="h-4 w-4 fill-current">
+                                    <path d="M5.5 7.5 10 12l4.5-4.5h-9Z" />
+                                </svg>
+                            </summary>
+
+                            <div class="absolute left-0 z-30 w-72 rounded-b border border-black/10 bg-white p-2 shadow-lg">
+                                @foreach ($children as $child)
+                                    <a href="{{ $child->url }}"
+                                       class="block rounded px-3 py-3 text-sm font-semibold text-ink hover:bg-surface hover:text-brand">
+                                        {{ $child->label }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        </details>
+                    @else
+                        <a href="{{ $item->url }}"
+                           @if ($isCurrent) aria-current="page" @endif
+                           @class([
+                               'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
+                               'border-accent' => $isCurrent,
+                               'border-transparent' => ! $isCurrent,
+                           ])>
+                            {{ $item->label }}
+                        </a>
+                    @endif
                 </li>
             @endforeach
         </ul>
@@ -62,8 +93,12 @@
             </summary>
 
             <ul id="mobile-nav" class="mx-auto max-w-7xl list-none px-4 pb-4">
-                @foreach ($navigation as $item)
-                    @php $isCurrent = request()->is(ltrim($item->url, '/') ?: '/'); @endphp
+                @foreach ($primaryNavigation as $item)
+                    @php
+                        $children = collect($item->children ?? []);
+                        $isCurrent = request()->is(ltrim($item->url, '/') ?: '/')
+                            || $children->contains(fn ($child) => request()->is(ltrim($child->url, '/')));
+                    @endphp
                     <li>
                         <a href="{{ $item->url }}"
                            @if ($isCurrent) aria-current="page" @endif
@@ -74,6 +109,18 @@
                            ])>
                             {{ $item->label }}
                         </a>
+                        @if ($children->isNotEmpty())
+                            <ul class="ml-4 border-l border-black/10 pl-3">
+                                @foreach ($children as $child)
+                                    <li>
+                                        <a href="{{ $child->url }}"
+                                           class="inline-flex min-h-11 items-center px-3 py-2 text-sm font-semibold text-ink hover:text-brand hover:underline">
+                                            {{ $child->label }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </li>
                 @endforeach
             </ul>

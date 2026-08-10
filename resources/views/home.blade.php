@@ -1,11 +1,27 @@
 <x-layouts.public :description="$homepage->hero_intro">
 
     {{-- Hero. Static image, no carousel: LCP and accessibility. --}}
-    <section class="on-dark relative bg-ink text-white">
-        @if ($hero = $homepage->getFirstMediaUrl('hero_image', 'hero'))
-            <img src="{{ $hero }}" alt="" aria-hidden="true"
-                 class="absolute inset-0 h-full w-full object-cover opacity-40">
-        @endif
+    <section class="on-dark relative bg-ink text-white" data-hero-slider>
+        @php
+            $slides = [
+                $homepage->getFirstMediaUrl('hero_image', 'hero') ?: asset('images/demo/homepage-hero.png'),
+                asset('images/demo/homepage-hero-forest.png'),
+                asset('images/demo/homepage-hero-marine.png'),
+                asset('images/demo/homepage-hero-waste.png'),
+            ];
+        @endphp
+
+        <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
+            @foreach ($slides as $index => $slide)
+                <img src="{{ $slide }}"
+                     alt=""
+                     data-hero-slide
+                     @class([
+                         'absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-700',
+                         'opacity-45' => $index === 0,
+                     ])>
+            @endforeach
+        </div>
 
         <div class="relative mx-auto max-w-4xl px-4 py-20 text-center sm:py-28">
             <h1 class="text-3xl font-bold leading-tight sm:text-5xl">
@@ -32,6 +48,36 @@
                     </x-ui.button>
                 @endif
             </div>
+
+            <div class="mt-10 flex items-center justify-center gap-3" aria-label="Hero slides">
+                <button type="button"
+                        class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/40 bg-black/20 text-white hover:bg-black/35"
+                        data-hero-prev
+                        aria-label="Previous hero image">
+                    <span aria-hidden="true">&larr;</span>
+                </button>
+
+                <div class="flex gap-2">
+                    @foreach ($slides as $index => $slide)
+                        <button type="button"
+                                @class([
+                                    'h-3 w-3 rounded-full border border-white/70',
+                                    'bg-white' => $index === 0,
+                                    'bg-white/20' => $index !== 0,
+                                ])
+                                data-hero-dot="{{ $index }}"
+                                aria-label="Show hero image {{ $index + 1 }}"
+                                @if ($index === 0) aria-current="true" @endif></button>
+                    @endforeach
+                </div>
+
+                <button type="button"
+                        class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/40 bg-black/20 text-white hover:bg-black/35"
+                        data-hero-next
+                        aria-label="Next hero image">
+                    <span aria-hidden="true">&rarr;</span>
+                </button>
+            </div>
         </div>
     </section>
 
@@ -40,12 +86,28 @@
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($quickLinks as $link)
                     <li>
+                        @php
+                            $imageClass = match ($link->label) {
+                                'Environment Programmes' => 'from-[#0f6b55] via-[#287A4B] to-[#8ccf95]',
+                                'Waste & Recycling' => 'from-[#37505c] via-[#287A4B] to-[#d4e15f]',
+                                'Biodiversity' => 'from-[#204b38] via-[#2f7c51] to-[#f2c94c]',
+                                'Climate & Marine' => 'from-[#003A70] via-[#0477a8] to-[#62c6c4]',
+                                'Publications' => 'from-[#5a6580] via-[#003A70] to-[#c7d5e8]',
+                                'Report an Issue' => 'from-[#7a2e2e] via-[#b4442d] to-[#FCD116]',
+                                default => 'from-brand via-eco to-accent',
+                            };
+                        @endphp
                         <a href="{{ $link->url }}"
-                           class="block h-full rounded border border-black/10 bg-white p-6 hover:border-brand">
-                            <span class="block font-semibold text-brand">{{ $link->label }}</span>
-                            @if ($link->description)
-                                <span class="mt-1 block text-sm">{{ $link->description }}</span>
-                            @endif
+                           class="group flex h-full flex-col items-center rounded border border-black/10 bg-white p-6 text-center shadow-sm hover:border-brand">
+                            <span class="flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br {{ $imageClass }} text-white ring-1 ring-black/10" aria-hidden="true">
+                                <x-ui.quick-link-icon :icon="$link->icon" class="h-11 w-11" />
+                            </span>
+                            <span class="mt-4 block">
+                                <span class="block text-lg font-semibold text-brand group-hover:underline">{{ $link->label }}</span>
+                                @if ($link->description)
+                                    <span class="mt-2 block text-sm">{{ $link->description }}</span>
+                                @endif
+                            </span>
                         </a>
                     </li>
                 @endforeach

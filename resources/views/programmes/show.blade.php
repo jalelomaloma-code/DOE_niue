@@ -10,12 +10,9 @@
             </div>
         </header>
 
-        @if ($url = $programme->featuredImageUrl('hero'))
-            <img src="{{ $url }}" alt="{{ $programme->featuredImageAlt() ?? '' }}"
-                 class="h-64 w-full object-cover sm:h-96">
-        @else
-            <div class="h-64 w-full bg-brand/10 sm:h-96" aria-hidden="true"></div>
-        @endif
+        @php $imageUrl = $programme->featuredImageUrl('hero') ?: \App\Support\DemoImages::for($programme); @endphp
+        <img src="{{ $imageUrl }}" alt="{{ $programme->featuredImageAlt() ?? '' }}"
+             class="h-64 w-full object-cover sm:h-96">
 
         {{-- Sanitised on save by the `body` mutator on the Programme model
              (App\Models\Concerns\HasSanitisedRichText -> RichTextSanitiser),

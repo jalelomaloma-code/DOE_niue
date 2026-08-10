@@ -13,7 +13,8 @@
                         <img src="{{ $url }}" alt="{{ $member->photoAlt() ?? $member->name }}"
                              class="mx-auto mb-4 h-32 w-32 rounded-full object-cover" loading="lazy">
                     @else
-                        <div class="mx-auto mb-4 h-32 w-32 rounded-full bg-brand/10" aria-hidden="true"></div>
+                        <img src="{{ asset('images/niue-doe-logo.png') }}" alt=""
+                             class="mx-auto mb-4 h-32 w-32 rounded-full bg-white object-contain p-3 ring-1 ring-black/10" loading="lazy">
                     @endif
 
                     <h3 class="font-semibold text-brand">{{ $member->name }}</h3>
