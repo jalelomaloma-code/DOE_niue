@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -40,11 +42,15 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class, PageSeeder::class, TeamMemberSeeder::class]);
 
-        // User::factory(10)->create();
+        $admin = User::updateOrCreate(
+            ['email' => env('DEMO_ADMIN_EMAIL', 'admin@niuedoe.local')],
+            [
+                'name' => env('DEMO_ADMIN_NAME', 'Niue DoE Admin'),
+                'password' => Hash::make(env('DEMO_ADMIN_PASSWORD', 'ChangeThisPassword123!')),
+                'email_verified_at' => now(),
+            ],
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $admin->assignRole(UserRole::SuperAdmin->value);
     }
 }
