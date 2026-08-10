@@ -1,0 +1,12 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '@fontsource/public-sans/400.css';
+@import '@fontsource/public-sans/600.css';
+@import '@fontsource/public-sans/700.css';
+
+@source '../../../../app/Filament/Department/**/*';
+@source '../../../../resources/views/filament/department/**/*';
+@source '../../../../app/Providers/Filament/DepartmentDashboardPanelProvider.php';
+
+@theme {
+    --font-sans: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}

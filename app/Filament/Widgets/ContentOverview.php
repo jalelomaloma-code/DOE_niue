@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ContentOverview extends StatsOverviewWidget
 {
-    protected ?string $heading = 'Content Overview';
+    protected ?string $heading = 'Website Content Overview';
 
     protected static ?int $sort = 10;
 

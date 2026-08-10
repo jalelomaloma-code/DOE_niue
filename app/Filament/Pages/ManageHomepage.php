@@ -19,7 +19,7 @@ class ManageHomepage extends Page
 {
     protected string $view = 'filament.pages.manage-homepage';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Website';
+    protected static string|UnitEnum|null $navigationGroup = 'Website Management';
 
     protected static ?string $navigationLabel = 'Homepage';
 

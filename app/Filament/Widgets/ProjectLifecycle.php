@@ -14,7 +14,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class ProjectLifecycle extends StatsOverviewWidget
 {
-    protected ?string $heading = 'Project Lifecycle';
+    protected ?string $heading = 'Website Project Lifecycle';
 
     protected static ?int $sort = 20;
 

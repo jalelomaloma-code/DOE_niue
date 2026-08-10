@@ -23,7 +23,7 @@ class TeamMemberResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Content';
+    protected static string|UnitEnum|null $navigationGroup = 'Website Management';
 
     public static function form(Schema $schema): Schema
     {

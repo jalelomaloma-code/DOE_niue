@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class RecentPublications extends TableWidget
 {
+    protected static ?string $heading = 'Recent Website Publications';
+
     protected static ?int $sort = 40;
 
     public function table(Table $table): Table

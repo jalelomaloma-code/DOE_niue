@@ -18,7 +18,7 @@ class ManageSiteSettings extends Page
 {
     protected string $view = 'filament.pages.manage-site-settings';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Website';
+    protected static string|UnitEnum|null $navigationGroup = 'Website Management';
 
     protected static ?string $navigationLabel = 'Site Settings';
 
