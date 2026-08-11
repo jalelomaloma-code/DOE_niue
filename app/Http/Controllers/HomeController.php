@@ -9,6 +9,8 @@ use App\Models\Programme;
 use App\Models\Project;
 use App\Models\QuickLink;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class HomeController extends Controller
 {
@@ -18,7 +20,12 @@ class HomeController extends Controller
             'homepage' => HomepageSetting::current(),
             'quickLinks' => QuickLink::active()->get(),
             'programmes' => $this->featuredOrLatest(Programme::query()->with('media'), 4, 'sort_order'),
-            'news' => NewsArticle::published()->with(['category', 'media'])->latest('published_at')->take(4)->get(),
+            'news' => NewsArticle::published()
+                ->with(['category', 'media'])
+                ->orderBy('is_demo')
+                ->latest('published_at')
+                ->take(4)
+                ->get(),
             'projects' => $this->featuredOrLatest(Project::query()->with('media'), 3),
             'documents' => Document::published()->with(['category', 'media'])->latest('published_date')->take(5)->get(),
         ]);
@@ -35,10 +42,10 @@ class HomeController extends Controller
      * right default where no curated order exists.
      */
     private function featuredOrLatest(
-        \Illuminate\Database\Eloquent\Builder $query,
+        Builder $query,
         int $limit,
         ?string $orderColumn = null,
-    ): \Illuminate\Database\Eloquent\Collection {
+    ): Collection {
         $featured = (clone $query)->published()->featured();
 
         $featured = $orderColumn

@@ -1,4 +1,4 @@
-<header>
+<header class="sticky top-0 z-50 shadow-sm">
     <div class="on-dark bg-brand text-white">
         <div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
             <a href="{{ url('/') }}" class="flex items-center gap-3">

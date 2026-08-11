@@ -56,6 +56,17 @@ class PageForm
                             return;
                         }
 
+                        $parentPath = filled($get('parent_id'))
+                            ? Page::query()->whereKey($get('parent_id'))->value('path')
+                            : null;
+                        $path = $parentPath ? $parentPath.'/'.$value : $value;
+
+                        if (Page::pathIsReserved($path)) {
+                            $fail("The page address \"{$path}\" is reserved for an existing website section.");
+
+                            return;
+                        }
+
                         // The prefix rule is different, and has to be anchored the
                         // way the ROUTE is anchored. Page::pathRoutePattern()'s
                         // negative lookahead sits at the start of the whole path,

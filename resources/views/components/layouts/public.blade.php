@@ -11,7 +11,7 @@
     @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-surface font-sans text-text antialiased">
+<body class="flex min-h-screen flex-col bg-ink font-sans text-text antialiased">
     <a href="#main"
        class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50
               focus:rounded focus:bg-brand focus:px-4 focus:py-2 focus:text-white">
@@ -20,7 +20,7 @@
 
     <x-site.header />
 
-    <main id="main" tabindex="-1">
+    <main id="main" tabindex="-1" class="flex flex-1 flex-col bg-surface">
         {{ $slot }}
     </main>
 

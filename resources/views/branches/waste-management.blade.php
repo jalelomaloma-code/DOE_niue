@@ -1,37 +1,34 @@
 <x-layouts.public :title="$title" :description="$intro">
-    <article>
-        <header class="bg-surface">
-            <div class="mx-auto max-w-3xl px-4 py-12">
-                <p class="text-sm font-semibold uppercase text-brand">Department Branch</p>
-                <h1 class="mt-2 text-3xl font-bold text-brand sm:text-4xl">{{ $title }}</h1>
-                <p class="mt-4 text-lg">{{ $intro }}</p>
-            </div>
-        </header>
+    <article class="flex flex-1 flex-col">
+        <x-ui.page-header
+            :title="$title"
+            :intro="$intro"
+            eyebrow="Department Branch"
+            :image="$image"
+            image-alt="" />
 
-        <img src="{{ $image }}" alt="" class="h-64 w-full object-cover sm:h-96" loading="lazy">
-
-        <section class="mx-auto max-w-7xl px-4 py-12">
+        <section class="mx-auto w-full max-w-7xl px-4 py-10 sm:py-12" aria-label="Waste management contact details">
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded border border-black/10 bg-white p-5">
+                <div class="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
                     <p class="text-sm font-semibold uppercase text-brand">Email</p>
                     <a href="mailto:{{ $contact['email'] }}" class="mt-2 block font-semibold text-ink hover:text-brand hover:underline">{{ $contact['email'] }}</a>
                 </div>
-                <div class="rounded border border-black/10 bg-white p-5">
+                <div class="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
                     <p class="text-sm font-semibold uppercase text-brand">Phone</p>
                     <a href="tel:{{ str_replace(' ', '', $contact['phone']) }}" class="mt-2 block font-semibold text-ink hover:text-brand hover:underline">{{ $contact['phone'] }}</a>
                 </div>
-                <div class="rounded border border-black/10 bg-white p-5">
+                <div class="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
                     <p class="text-sm font-semibold uppercase text-brand">Opening Hours</p>
                     <p class="mt-2 font-semibold text-ink">{{ $contact['hours'] }}</p>
                 </div>
-                <div class="rounded border border-black/10 bg-white p-5">
+                <div class="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
                     <p class="text-sm font-semibold uppercase text-brand">Address</p>
                     <p class="mt-2 font-semibold text-ink">{{ $contact['address'] }}</p>
                 </div>
             </div>
         </section>
 
-        <section class="bg-white py-12">
+        <section class="bg-white py-10 sm:py-12">
             <div class="mx-auto max-w-7xl px-4">
                 <h2 class="text-2xl font-bold text-brand">Residential Waste and Recycling</h2>
                 <p class="mt-3 max-w-3xl text-text">Waste separation starts at home. Households are encouraged to keep recyclables clean and ready for collection, and to arrange special pickups for bulky or hazardous items.</p>
@@ -109,7 +106,7 @@
             </div>
         </section>
 
-        <section class="mx-auto max-w-7xl px-4 py-12">
+        <section class="mx-auto w-full max-w-7xl px-4 py-10 sm:py-12">
             <div class="grid gap-6 lg:grid-cols-2">
                 <x-waste.table-card title="Services for Business" intro="Businesses can use reliable waste collection and recycling drop-off services. The recycling drop-off area is open Monday to Friday, 9:00am to 4:00pm.">
                     <x-waste.image-strip :images="[
@@ -190,7 +187,7 @@
             </div>
         </section>
 
-        <section class="bg-surface py-12">
+        <section class="bg-surface py-10 sm:py-12">
             <div class="mx-auto max-w-7xl px-4">
                 <h2 class="text-2xl font-bold text-brand">Landfill Guidance</h2>
                 <p class="mt-3 max-w-3xl text-text">Makato and Vaiea landfill information is summarised here for public guidance. Recyclable materials should be directed to the recycling centre where appropriate.</p>
@@ -259,7 +256,7 @@
             </div>
         </section>
 
-        <section class="mx-auto max-w-3xl px-4 py-10 text-sm text-text/70">
+        <section class="mx-auto w-full max-w-7xl border-t border-black/10 px-4 py-8 text-sm text-text/70">
             <p>Service information adapted for this demo from Waste Management Niue. Game, video and team-profile content has not been included.</p>
             <p class="mt-2"><a href="https://niuewastemanagement.nu/" class="font-semibold text-brand hover:underline">Visit Waste Management Niue</a></p>
         </section>

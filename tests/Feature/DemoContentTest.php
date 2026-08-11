@@ -2,14 +2,21 @@
 
 use App\Models\Document;
 use App\Models\HomepageSetting;
+use App\Models\NavigationItem;
 use App\Models\NewsArticle;
+use App\Models\Page;
 use App\Models\Programme;
 use App\Models\Project;
 use App\Models\QuickLink;
 use App\Models\SiteSetting;
+use App\Models\TeamMember;
+use Database\Seeders\DemoContentSeeder;
+use Database\Seeders\NavigationItemSeeder;
+use Database\Seeders\PageSeeder;
+use Database\Seeders\TeamMemberSeeder;
 
 it('flags every seeded record as demo content', function () {
-    $this->seed(\Database\Seeders\DemoContentSeeder::class);
+    $this->seed(DemoContentSeeder::class);
 
     expect(Programme::where('is_demo', false)->count())->toBe(0)
         ->and(NewsArticle::where('is_demo', false)->count())->toBe(0)
@@ -18,7 +25,7 @@ it('flags every seeded record as demo content', function () {
 });
 
 it('removes all demo content and leaves real content alone', function () {
-    $this->seed(\Database\Seeders\DemoContentSeeder::class);
+    $this->seed(DemoContentSeeder::class);
     $real = Programme::factory()->create(['is_demo' => false, 'title' => 'Real programme']);
 
     expect(Programme::count())->toBeGreaterThan(1);
@@ -40,7 +47,7 @@ it('removes all demo content and leaves real content alone', function () {
 // harmless, gitignored files behind under storage/app/public/{id}/, since
 // RefreshDatabase truncates tables but never touches physical storage.
 it('deletes media files from disk, not merely the database rows', function () {
-    $this->seed(\Database\Seeders\DemoContentSeeder::class);
+    $this->seed(DemoContentSeeder::class);
 
     $pathsFor = fn ($media) => collect($media->getGeneratedConversions()->keys()->push('original'))
         ->map(fn ($conversion) => $conversion === 'original' ? $media->getPath() : $media->getPath($conversion));
@@ -65,7 +72,7 @@ it('deletes media files from disk, not merely the database rows', function () {
 });
 
 it('never touches site settings, homepage settings or quick links', function () {
-    $this->seed(\Database\Seeders\DemoContentSeeder::class);
+    $this->seed(DemoContentSeeder::class);
 
     SiteSetting::current()->update(['department_name' => 'Niue Department of Environment']);
     HomepageSetting::current()->update(['hero_headline' => 'Protecting Niue']);
@@ -86,7 +93,7 @@ it('never touches site settings, homepage settings or quick links', function () 
 });
 
 it('gives every homepage section enough featured content', function () {
-    $this->seed(\Database\Seeders\DemoContentSeeder::class);
+    $this->seed(DemoContentSeeder::class);
 
     expect(Programme::published()->featured()->count())->toBeGreaterThanOrEqual(2)
         ->and(Project::published()->featured()->count())->toBeGreaterThanOrEqual(2)
@@ -95,25 +102,25 @@ it('gives every homepage section enough featured content', function () {
 });
 
 it('purges demo pages and team members but keeps navigation items', function () {
-    $this->seed(\Database\Seeders\NavigationItemSeeder::class);
-    $this->seed(\Database\Seeders\PageSeeder::class);
-    $this->seed(\Database\Seeders\TeamMemberSeeder::class);
+    $this->seed(NavigationItemSeeder::class);
+    $this->seed(PageSeeder::class);
+    $this->seed(TeamMemberSeeder::class);
 
-    expect(\App\Models\Page::count())->toBeGreaterThan(0)
-        ->and(\App\Models\TeamMember::count())->toBeGreaterThan(0);
+    expect(Page::count())->toBeGreaterThan(0)
+        ->and(TeamMember::count())->toBeGreaterThan(0);
 
     $this->artisan('demo:purge', ['--force' => true])->assertSuccessful();
 
-    expect(\App\Models\Page::count())->toBe(0)
-        ->and(\App\Models\TeamMember::count())->toBe(0)
+    expect(Page::count())->toBe(0)
+        ->and(TeamMember::count())->toBe(0)
         // NavigationItemSeeder seeds six top-level items post-regroup (Home,
         // About Us, Our Work, News & Events, Resources, Contact Us) -- not
         // twelve. NavigationItem has no is_demo column at all, so this count
         // must be exactly what was seeded, unchanged by the purge.
-        ->and(\App\Models\NavigationItem::count())->toBe(6);
+        ->and(NavigationItem::count())->toBe(6);
 });
 
-it('resolves every seeded navigation path and every child of About Us and Our Work, and 404s exactly where a later spec is expected to fill the gap', function () {
+it('resolves every seeded navigation path and every child of About Us and Our Work', function () {
     // This is the spec's headline success criterion ("every navigation item
     // resolves; no 404 from the primary navigation") made into a machine
     // check instead of resting on a manual browser walkthrough. The
@@ -122,29 +129,15 @@ it('resolves every seeded navigation path and every child of About Us and Our Wo
     // PageSeeder produced completely different slugs from what the
     // navigation actually points at -- this test is the one that would
     // catch that drift.
-    $this->seed(\Database\Seeders\NavigationItemSeeder::class);
-    $this->seed(\Database\Seeders\PageSeeder::class);
-
-    // Known gaps: paths a primary nav item or the Our Work card_grid points
-    // at, but that belong to a later spec, not this task. There is no
-    // seeded record to derive these from -- that absence is the entire
-    // reason they're gaps -- so they're named explicitly here rather than
-    // silently skipped. A later spec that fills one of these in without
-    // updating this list will fail this test loudly (assertNotFound() will
-    // start failing once the page exists), which is the intended trip wire.
-    $laterSpecGaps = [
-        '/news' => 'News & Events -- Spec 3',
-        '/resources' => 'Resources -- Spec 3',
-        '/our-work/projects' => 'Projects -- Spec 3',
-        '/report-an-environmental-issue' => 'Report an issue -- Spec 4',
-    ];
+    $this->seed(NavigationItemSeeder::class);
+    $this->seed(PageSeeder::class);
 
     // Derived from the seeded records, not hardcoded, so this test tracks
     // NavigationItemSeeder/PageSeeder rather than drifting from them.
-    $navUrls = \App\Models\NavigationItem::active()->pluck('url');
+    $navUrls = NavigationItem::active()->pluck('url');
 
-    $about = \App\Models\Page::published()->where('slug', 'about')->firstOrFail();
-    $ourWork = \App\Models\Page::published()->where('slug', 'our-work')->firstOrFail();
+    $about = Page::published()->where('slug', 'about')->firstOrFail();
+    $ourWork = Page::published()->where('slug', 'our-work')->firstOrFail();
 
     $childPaths = $about->children()->published()->pluck('path')
         ->merge($ourWork->children()->published()->pluck('path'))
@@ -155,20 +148,15 @@ it('resolves every seeded navigation path and every child of About Us and Our Wo
     expect($childPaths)->toHaveCount(8);
 
     $expectedToResolve = $navUrls
-        ->reject(fn (string $url) => array_key_exists($url, $laterSpecGaps))
         ->merge($childPaths)
         ->unique()
         ->values();
 
-    // Home, About Us, Our Work, Contact Us (News & Events and Resources are
-    // the two nav items excluded as later-spec gaps) plus the 8 children.
-    expect($expectedToResolve)->toHaveCount(4 + 8);
+    // Six top-level navigation destinations plus the eight section children.
+    expect($expectedToResolve)->toHaveCount(6 + 8);
 
     foreach ($expectedToResolve as $url) {
         $this->withoutVite()->get($url)->assertOk();
     }
 
-    foreach ($laterSpecGaps as $url => $reason) {
-        $this->withoutVite()->get($url)->assertNotFound();
-    }
 });

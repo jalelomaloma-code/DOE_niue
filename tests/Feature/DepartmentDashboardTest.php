@@ -26,10 +26,10 @@ it('lets a viewer see the Filament department dashboard with sample data', funct
     $this->actingAs(departmentDashboardUser(UserRole::Viewer))
         ->get('/dashboard')
         ->assertOk()
-        ->assertSee('Department Dashboard')
-        ->assertSee('Operational overview')
-        ->assertSee('Environmental indicator charts')
-        ->assertSee('Website engagement summary');
+        ->assertSee('Director overview')
+        ->assertSee('Decisions, delivery, finances, compliance and environmental response in one place.')
+        ->assertSee('Environmental indicators')
+        ->assertSee('Website Analytics');
 });
 
 it('blocks viewer access to the optional full dashboard preview', function () {

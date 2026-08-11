@@ -1,5 +1,7 @@
 <x-layouts.public :title="$page->seoTitle()" :description="$page->seoDescription()">
-    <article>
+    @php($isLegalPage = in_array($page->path, ['privacy', 'terms', 'accessibility'], true))
+
+    <article class="flex flex-1 flex-col">
         @if ($page->path === 'about')
             <header class="bg-ink text-white">
                 <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -48,22 +50,37 @@
                     </div>
                 </div>
             </section>
-        @else
-            <header class="bg-surface">
-                <div class="mx-auto max-w-3xl px-4 py-12">
-                    <h1 class="text-3xl font-bold text-brand sm:text-4xl">{{ $page->title }}</h1>
+        @elseif ($isLegalPage)
+            <section class="legal-page-shell relative flex flex-1 items-center overflow-hidden bg-[#eef6f1]"
+                     style="--legal-environment-image: url('{{ asset('images/demo/homepage-hero-forest.png') }}')">
+                <div class="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[0.7fr_1.3fr] lg:gap-12 lg:py-12">
+                    <header>
+                        <p class="text-sm font-semibold uppercase text-eco">Department information</p>
+                        <h1 class="mt-2 text-3xl font-bold text-brand sm:text-4xl">{{ $page->title }}</h1>
 
-                    @if ($page->intro)
-                        <p class="mt-4 text-lg">{{ $page->intro }}</p>
-                    @endif
+                        @if ($page->intro)
+                            <p class="mt-3 max-w-xl text-lg text-text">{{ $page->intro }}</p>
+                        @endif
+                    </header>
+
+                    <div class="legal-page-content border-t-4 border-eco pt-6 lg:border-t-0 lg:border-l-4 lg:pt-0 lg:pl-8">
+                        <x-page.content :blocks="$page->content" />
+                    </div>
                 </div>
-            </header>
+            </section>
+        @else
+            <x-ui.page-header
+                :title="$page->title"
+                :intro="$page->intro"
+                eyebrow="Department information" />
         @endif
 
-        <x-page.content :blocks="$page->content" />
+        @unless ($isLegalPage)
+            <x-page.content :blocks="$page->content" />
+        @endunless
 
         @if ($children->isNotEmpty())
-            <nav aria-label="In this section" class="mx-auto max-w-7xl px-4 py-10">
+            <nav aria-label="In this section" class="mx-auto w-full max-w-7xl px-4 py-10">
                 <h2 class="mb-6 text-2xl font-bold text-brand">In this section</h2>
                 <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ($children as $child)
@@ -82,7 +99,7 @@
         @endif
 
         @if ($siblings->count() > 1)
-            <nav aria-label="Related pages" class="mx-auto max-w-3xl px-4 pb-12">
+            <nav aria-label="Related pages" class="mx-auto w-full max-w-7xl px-4 pb-10">
                 <ul class="flex flex-wrap gap-4">
                     @foreach ($siblings as $sibling)
                         <li>

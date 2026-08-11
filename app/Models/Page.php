@@ -37,6 +37,23 @@ class Page extends Model
     public const RESERVED_SLUGS = ['admin', 'storage', 'livewire', 'api', 'login', 'logout', 'up'];
 
     /**
+     * Public paths owned by explicit application routes.
+     *
+     * These are path-based rather than globally reserved slugs: a child page
+     * such as `/about-us/news` is valid, while `/news` and
+     * `/our-work/projects` would be shadowed by routes/web.php.
+     */
+    public const RESERVED_PATHS = [
+        'news',
+        'resources',
+        'our-work/projects',
+        'our-work/environmental-governance',
+        'our-work/climate-change-and-ozone',
+        'our-work/waste-management-and-pollution-control',
+        'report-an-environmental-issue',
+    ];
+
+    /**
      * Path prefixes the catch-all route refuses to match.
      *
      * The route's negative lookahead is prefix-based, not exact: `/admin` and
@@ -47,7 +64,7 @@ class Page extends Model
      * str_starts_with(), and routes/web.php builds the route pattern from it,
      * so the two can no longer drift apart.
      */
-    public const ROUTE_EXCLUDED_PREFIXES = ['admin', 'storage', 'livewire'];
+    public const ROUTE_EXCLUDED_PREFIXES = ['admin', 'dashboard', 'storage', 'livewire'];
 
     /**
      * The character set a single path segment may use, as a bare regex
@@ -80,6 +97,17 @@ class Page extends Model
         $extraSegments = str_repeat("(\/{$segment})?", self::MAX_DEPTH - 1);
 
         return "^(?!{$excluded}){$segment}{$extraSegments}$";
+    }
+
+    public static function pathIsReserved(string $path): bool
+    {
+        foreach (self::RESERVED_PATHS as $reservedPath) {
+            if ($path === $reservedPath || str_starts_with($path, $reservedPath.'/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected $fillable = [

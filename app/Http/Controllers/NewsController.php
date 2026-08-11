@@ -12,8 +12,9 @@ class NewsController extends Controller
         return view('news.index', [
             'articles' => NewsArticle::published()
                 ->with(['category', 'media'])
+                ->orderBy('is_demo')
                 ->latest('published_at')
-                ->paginate(9),
+                ->paginate(12),
         ]);
     }
 

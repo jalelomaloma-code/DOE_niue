@@ -1,28 +1,21 @@
 <x-layouts.public :title="$project->seoTitle()" :description="$project->seoDescription()">
-    <article>
-        <header class="bg-surface">
-            <div class="mx-auto max-w-3xl px-4 py-12">
-                @if ($project->programme)
-                    <p class="text-sm font-semibold uppercase text-brand">{{ $project->programme->title }}</p>
-                @endif
-
-                <h1 class="mt-2 text-3xl font-bold text-brand sm:text-4xl">{{ $project->title }}</h1>
-
-                @if ($project->summary)
-                    <p class="mt-4 text-lg">{{ $project->summary }}</p>
-                @endif
-
-                <p class="mt-4 inline-flex rounded bg-white px-3 py-1 text-sm font-semibold text-ink">
-                    {{ $project->project_status->label() }}
-                </p>
-            </div>
-        </header>
-
+    <article class="flex flex-1 flex-col">
         @php $imageUrl = $project->featuredImageUrl('hero') ?: \App\Support\DemoImages::for($project); @endphp
-        <img src="{{ $imageUrl }}" alt="{{ $project->featuredImageAlt() ?? '' }}" class="h-64 w-full object-cover sm:h-96">
+        <x-ui.page-header
+            :title="$project->title"
+            :intro="$project->summary"
+            :eyebrow="$project->programme?->title ?? 'Department Project'"
+            :image="$imageUrl"
+            :image-alt="$project->featuredImageAlt() ?? ''">
+            <span class="inline-flex rounded border border-brand/15 bg-white px-3 py-1 text-sm font-semibold text-ink shadow-sm">
+                {{ $project->project_status->label() }}
+            </span>
+        </x-ui.page-header>
 
-        <div class="prose prose-slate mx-auto max-w-3xl px-4 py-8">
-            {!! $project->body !!}
+        <div class="flex-1 bg-white">
+            <div class="public-rich-text mx-auto max-w-3xl px-4 py-10 sm:py-12">
+                {!! $project->body !!}
+            </div>
         </div>
     </article>
 </x-layouts.public>

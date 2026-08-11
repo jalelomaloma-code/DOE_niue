@@ -6,7 +6,7 @@
     @endif
 
     {{-- Sanitised on save by RichTextSanitiser; never render unsanitised input. --}}
-    <div class="prose prose-slate max-w-none">
+    <div class="public-rich-text">
         {!! $data['body'] ?? '' !!}
     </div>
 </section>

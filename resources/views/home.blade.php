@@ -1,6 +1,6 @@
 <x-layouts.public :description="$homepage->hero_intro">
 
-    {{-- Hero. Static image, no carousel: LCP and accessibility. --}}
+    {{-- The first image remains eager-loaded for LCP; the remaining slides are decorative. --}}
     <section class="on-dark relative bg-ink text-white" data-hero-slider>
         @php
             $slides = [
@@ -15,16 +15,18 @@
             @foreach ($slides as $index => $slide)
                 <img src="{{ $slide }}"
                      alt=""
+                     aria-hidden="true"
                      data-hero-slide
+                     data-active="{{ $index === 0 ? 'true' : 'false' }}"
                      @class([
-                         'absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-700',
+                         'home-hero-slide absolute inset-0 h-full w-full object-cover opacity-0',
                          'opacity-65' => $index === 0,
                      ])>
             @endforeach
         </div>
 
-        <div class="relative mx-auto max-w-4xl px-4 py-20 text-center sm:py-28">
-            <h1 class="text-3xl font-bold leading-tight sm:text-5xl">
+        <div class="relative mx-auto min-w-0 max-w-4xl px-4 py-20 text-center sm:py-28">
+            <h1 class="break-words text-3xl font-bold leading-tight sm:text-5xl">
                 {{-- ENT_NOQUOTES, not {{ }}: this text node has no attribute
                      boundary to protect, so quote characters render literally
                      instead of as &#039; entities. Still escapes <, >, & --}}
@@ -32,18 +34,18 @@
             </h1>
 
             @if ($homepage->hero_intro)
-                <p class="mx-auto mt-6 max-w-2xl text-lg text-white/90">{{ $homepage->hero_intro }}</p>
+                <p class="mx-auto mt-6 max-w-2xl text-base text-white/90 sm:text-lg">{{ $homepage->hero_intro }}</p>
             @endif
 
-            <div class="mt-8 flex flex-wrap justify-center gap-4">
+            <div class="mx-auto mt-8 flex max-w-xs flex-col items-stretch gap-4 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
                 @if ($homepage->hero_primary_cta_label)
-                    <x-ui.button variant="accent" :href="$homepage->hero_primary_cta_url">
+                    <x-ui.button variant="accent" :href="$homepage->hero_primary_cta_url" class="w-full sm:w-auto">
                         {{ $homepage->hero_primary_cta_label }}
                     </x-ui.button>
                 @endif
 
                 @if ($homepage->hero_secondary_cta_label)
-                    <x-ui.button variant="secondary" :href="$homepage->hero_secondary_cta_url">
+                    <x-ui.button variant="secondary" :href="$homepage->hero_secondary_cta_url" class="w-full sm:w-auto">
                         {{ $homepage->hero_secondary_cta_label }}
                     </x-ui.button>
                 @endif
@@ -82,10 +84,13 @@
     </section>
 
     @if ($quickLinks->isNotEmpty())
-        <x-ui.section :heading="$homepage->quick_links_heading">
+        <x-ui.section :heading="$homepage->quick_links_heading"
+                      class="home-section home-section--plain bg-white"
+                      style="--home-environment-image: url('{{ asset('images/niue-doe-logo.png') }}')"
+                      data-reveal>
             <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($quickLinks as $link)
-                    <li>
+                    <li data-reveal-item>
                         @php
                             $imageClass = match ($link->label) {
                                 'Environment Programmes' => 'from-[#0f6b55] via-[#287A4B] to-[#8ccf95]',
@@ -98,7 +103,7 @@
                             };
                         @endphp
                         <a href="{{ $link->url }}"
-                           class="group flex h-full flex-col items-center rounded border border-black/10 bg-white p-6 text-center shadow-sm hover:border-brand">
+                           class="home-quick-link group flex h-full flex-col items-center rounded border border-black/10 bg-white/95 p-6 text-center shadow-sm hover:border-brand">
                             <span class="flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br {{ $imageClass }} text-white ring-1 ring-black/10" aria-hidden="true">
                                 <x-ui.quick-link-icon :icon="$link->icon" class="h-11 w-11" />
                             </span>
@@ -116,38 +121,57 @@
     @endif
 
     @if ($programmes->isNotEmpty())
-        <x-ui.section :heading="$homepage->programmes_heading" :intro="$homepage->programmes_intro">
-            <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <x-ui.section :heading="$homepage->programmes_heading"
+                      :intro="$homepage->programmes_intro"
+                      class="home-section home-section--canopy bg-[#eef6f1]"
+                      style="--home-environment-image: url('{{ asset('images/demo/biodiversity-conservation.png') }}')"
+                      data-reveal>
+            <div class="home-card-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($programmes as $programme)
-                    <x-content.programme-card :programme="$programme" />
+                    <div class="h-full" data-reveal-item>
+                        <x-content.programme-card :programme="$programme" />
+                    </div>
                 @endforeach
             </div>
         </x-ui.section>
     @endif
 
     @if ($news->isNotEmpty())
-        <x-ui.section :heading="$homepage->news_heading">
-            <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <x-ui.section :heading="$homepage->news_heading"
+                      class="home-section home-section--ocean bg-white"
+                      style="--home-environment-image: url('{{ asset('images/demo/homepage-hero-marine.png') }}')"
+                      data-reveal>
+            <div class="home-card-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($news as $article)
-                    <x-content.news-card :article="$article" />
+                    <div class="h-full" data-reveal-item>
+                        <x-content.news-card :article="$article" />
+                    </div>
                 @endforeach
             </div>
         </x-ui.section>
     @endif
 
     @if ($projects->isNotEmpty())
-        <x-ui.section :heading="$homepage->projects_heading" class="bg-surface">
-            <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <x-ui.section :heading="$homepage->projects_heading"
+                      class="home-section home-section--forest bg-surface"
+                      style="--home-environment-image: url('{{ asset('images/demo/homepage-hero-forest.png') }}')"
+                      data-reveal>
+            <div class="home-card-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($projects as $project)
-                    <x-content.programme-card :programme="$project" />
+                    <div class="h-full" data-reveal-item>
+                        <x-content.programme-card :programme="$project" />
+                    </div>
                 @endforeach
             </div>
         </x-ui.section>
     @endif
 
     @if ($documents->isNotEmpty())
-        <x-ui.section :heading="$homepage->resources_heading">
-            <ul class="divide-y divide-black/10">
+        <x-ui.section :heading="$homepage->resources_heading"
+                      class="home-section home-section--coast bg-white"
+                      style="--home-environment-image: url('{{ asset('images/demo/homepage-hero.png') }}')"
+                      data-reveal>
+            <ul class="rounded-lg border border-black/10 bg-white/95 px-5 shadow-sm sm:px-7">
                 @foreach ($documents as $document)
                     <x-content.document-row :document="$document" />
                 @endforeach
@@ -156,8 +180,10 @@
     @endif
 
     @if ($homepage->report_heading)
-        <section class="bg-brand py-12 text-white sm:py-16">
-            <div class="mx-auto max-w-3xl px-4 text-center">
+        <section class="home-report on-dark relative overflow-hidden bg-brand py-12 text-white sm:py-16"
+                 style="--home-environment-image: url('{{ asset('images/demo/homepage-hero-marine.png') }}')"
+                 data-reveal>
+            <div class="relative mx-auto max-w-3xl px-4 text-center">
                 <h2 class="text-2xl font-bold sm:text-3xl">{{ $homepage->report_heading }}</h2>
 
                 @if ($homepage->report_intro)

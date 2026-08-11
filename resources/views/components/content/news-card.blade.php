@@ -1,7 +1,11 @@
 @props(['article'])
 
 <article class="flex h-full flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
-    @php $imageUrl = \App\Support\DemoImages::cardFor($article); @endphp
+    @php
+        $imageUrl = $article->is_demo
+            ? \App\Support\DemoImages::cardFor($article)
+            : ($article->featuredImageUrl('card') ?: \App\Support\DemoImages::cardFor($article));
+    @endphp
     <img src="{{ $imageUrl }}" alt="{{ $article->featuredImageAlt() ?? '' }}" class="h-40 w-full object-cover">
 
     <div class="flex flex-1 flex-col p-6">

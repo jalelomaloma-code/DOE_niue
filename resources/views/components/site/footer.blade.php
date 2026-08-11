@@ -21,23 +21,23 @@
 @endphp
 
 <footer class="on-dark bg-ink text-white">
-    <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-3">
+    <div class="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-3 sm:py-9">
         <div>
             <p class="text-lg font-bold">{{ $settings->department_name }}</p>
             <p class="mt-1 text-sm text-white/80">{{ $settings->government_name }}</p>
 
-            <ul class="mt-4 space-y-1 text-sm text-white/80">
+            <ul class="mt-3 text-sm text-white/80">
                 @if ($settings->address)
-                    <li class="flex min-h-11 items-center">{{ $settings->address }}</li>
+                    <li class="py-2">{{ $settings->address }}</li>
                 @endif
                 @if ($settings->phone)
-                    <li><a href="tel:{{ $settings->phone }}" class="flex min-h-11 items-center hover:text-white hover:underline">{{ $settings->phone }}</a></li>
+                    <li><a href="tel:{{ $settings->phone }}" class="flex min-h-9 items-center hover:text-white hover:underline">{{ $settings->phone }}</a></li>
                 @endif
                 @if ($settings->email)
-                    <li><a href="mailto:{{ $settings->email }}" class="flex min-h-11 items-center hover:text-white hover:underline">{{ $settings->email }}</a></li>
+                    <li><a href="mailto:{{ $settings->email }}" class="flex min-h-9 items-center hover:text-white hover:underline">{{ $settings->email }}</a></li>
                 @endif
                 @if ($settings->office_hours)
-                    <li class="flex min-h-11 items-center">{{ $settings->office_hours }}</li>
+                    <li class="py-2">{{ $settings->office_hours }}</li>
                 @endif
             </ul>
         </div>
@@ -45,9 +45,9 @@
         <div>
             <p class="text-sm font-semibold uppercase tracking-wide text-white/60">Site Links</p>
 
-            <ul class="mt-4 space-y-1 text-sm text-white/80">
+            <ul class="mt-3 grid grid-cols-2 gap-x-4 text-sm text-white/80">
                 @foreach ($navigation as $item)
-                    <li><a href="{{ $item->url }}" class="flex min-h-11 items-center hover:text-white hover:underline">{{ $item->label }}</a></li>
+                    <li><a href="{{ $item->url }}" class="flex min-h-9 items-center hover:text-white hover:underline">{{ $item->label }}</a></li>
                 @endforeach
             </ul>
         </div>
@@ -56,9 +56,9 @@
             <div>
                 <p class="text-sm font-semibold uppercase tracking-wide text-white/60">Legal</p>
 
-                <ul class="mt-4 space-y-1 text-sm text-white/80">
+                <ul class="mt-3 text-sm text-white/80">
                     @foreach ($legalPages as $page)
-                        <li><a href="{{ url($page->path) }}" class="flex min-h-11 items-center hover:text-white hover:underline">{{ $page->title }}</a></li>
+                        <li><a href="{{ url($page->path) }}" class="flex min-h-9 items-center hover:text-white hover:underline">{{ $page->title }}</a></li>
                     @endforeach
                 </ul>
             </div>
@@ -66,7 +66,7 @@
     </div>
 
     @if ($settings->footer_text)
-        <div class="border-t border-white/10 px-4 py-4 text-center text-sm text-white/60">
+        <div class="border-t border-white/10 px-4 py-3 text-center text-sm text-white/60">
             {{ $settings->footer_text }}
         </div>
     @endif

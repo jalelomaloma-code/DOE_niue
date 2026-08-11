@@ -343,7 +343,9 @@ it('reserves every path a route registered before the page catch-all would shado
         // A Page could legitimately be given this path, and this route would
         // win. The CMS has to refuse it.
         $slug = $segments[0];
-        $reserved = in_array($slug, Page::RESERVED_SLUGS, true);
+        $path = implode('/', $segments);
+        $reserved = in_array($slug, Page::RESERVED_SLUGS, true)
+            || Page::pathIsReserved($path);
 
         foreach (Page::ROUTE_EXCLUDED_PREFIXES as $prefix) {
             $reserved = $reserved || str_starts_with($slug, $prefix);
@@ -351,11 +353,47 @@ it('reserves every path a route registered before the page catch-all would shado
 
         expect($reserved)->toBeTrue(
             "The route \"{$route->uri()}\" is registered before the page catch-all and would "
-            ."shadow a page slugged \"{$slug}\". Add it to Page::RESERVED_SLUGS or "
-            .'Page::ROUTE_EXCLUDED_PREFIXES, or the page will save cleanly, list as '
+            ."shadow a page at \"{$path}\". Add it to Page::RESERVED_PATHS, "
+            .'Page::RESERVED_SLUGS or Page::ROUTE_EXCLUDED_PREFIXES, or the page will save cleanly, list as '
             .'Published, and never be reachable.'
         );
     }
+});
+
+it('rejects exact public route paths while allowing the same child slug elsewhere', function () {
+    $this->actingAs(pageUser(UserRole::WebsiteManager));
+
+    $ourWork = Page::factory()->create([
+        'title' => 'Our Work',
+        'slug' => 'our-work',
+        'parent_id' => null,
+    ]);
+    $about = Page::factory()->create([
+        'title' => 'About Us',
+        'slug' => 'about-us',
+        'parent_id' => null,
+    ]);
+
+    Livewire::test(CreatePage::class)
+        ->fillForm([
+            'title' => 'Projects',
+            'slug' => 'projects',
+            'parent_id' => $ourWork->id,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['slug']);
+
+    Livewire::test(CreatePage::class)
+        ->fillForm([
+            'title' => 'Projects',
+            'slug' => 'projects',
+            'parent_id' => $about->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Page::where('path', 'our-work/projects')->exists())->toBeFalse()
+        ->and(Page::where('path', 'about-us/projects')->exists())->toBeTrue();
 });
 
 it('rejects a slug that merely starts with a route-excluded prefix, and proves the router could not have served it', function () {

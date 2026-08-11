@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class, PageSeeder::class, TeamMemberSeeder::class]);
+        $this->call([RoleSeeder::class, DocumentCategorySeeder::class, SettingsSeeder::class, QuickLinkSeeder::class, NavigationItemSeeder::class, DemoContentSeeder::class, WasteManagementNewsSeeder::class, PageSeeder::class, TeamMemberSeeder::class]);
 
         $admin = User::updateOrCreate(
             ['email' => env('DEMO_ADMIN_EMAIL', 'admin@niuedoe.local')],
