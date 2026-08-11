@@ -27,7 +27,7 @@
                         <details class="group relative">
                             <summary
                                 @class([
-                                    'inline-flex min-h-11 cursor-pointer list-none items-center gap-1 border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent marker:hidden [&::-webkit-details-marker]:hidden',
+                                    'inline-flex min-h-11 cursor-pointer list-none items-center gap-1 border-b-2 px-3 py-2 text-base font-semibold text-ink hover:border-accent marker:hidden [&::-webkit-details-marker]:hidden',
                                     'border-accent' => $isCurrent,
                                     'border-transparent' => ! $isCurrent,
                                 ])>
@@ -40,7 +40,7 @@
                             <div class="absolute left-0 z-30 w-72 rounded-b border border-black/10 bg-white p-2 shadow-lg">
                                 @foreach ($children as $child)
                                     <a href="{{ $child->url }}"
-                                       class="block rounded px-3 py-3 text-sm font-semibold text-ink hover:bg-surface hover:text-brand">
+                                       class="block rounded px-3 py-3 text-base font-semibold text-ink hover:bg-surface hover:text-brand">
                                         {{ $child->label }}
                                     </a>
                                 @endforeach
@@ -50,7 +50,7 @@
                         <a href="{{ $item->url }}"
                            @if ($isCurrent) aria-current="page" @endif
                            @class([
-                               'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
+                               'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-base font-semibold text-ink hover:border-accent',
                                'border-accent' => $isCurrent,
                                'border-transparent' => ! $isCurrent,
                            ])>
@@ -85,7 +85,7 @@
         <details id="nav-disclosure" class="lg:hidden">
             <summary id="menu-toggle"
                      aria-controls="mobile-nav"
-                     class="mx-auto flex max-w-7xl min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-ink select-none marker:hidden [&::-webkit-details-marker]:hidden">
+                     class="mx-auto flex max-w-7xl min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-base font-semibold text-ink select-none marker:hidden [&::-webkit-details-marker]:hidden">
                 <svg aria-hidden="true" viewBox="0 0 24 24" class="h-6 w-6 stroke-current" fill="none" stroke-width="2">
                     <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" />
                 </svg>
@@ -103,7 +103,7 @@
                         <a href="{{ $item->url }}"
                            @if ($isCurrent) aria-current="page" @endif
                            @class([
-                               'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm font-semibold text-ink hover:border-accent',
+                               'inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-base font-semibold text-ink hover:border-accent',
                                'border-accent' => $isCurrent,
                                'border-transparent' => ! $isCurrent,
                            ])>
@@ -114,7 +114,7 @@
                                 @foreach ($children as $child)
                                     <li>
                                         <a href="{{ $child->url }}"
-                                           class="inline-flex min-h-11 items-center px-3 py-2 text-sm font-semibold text-ink hover:text-brand hover:underline">
+                                           class="inline-flex min-h-11 items-center px-3 py-2 text-base font-semibold text-ink hover:text-brand hover:underline">
                                             {{ $child->label }}
                                         </a>
                                     </li>
