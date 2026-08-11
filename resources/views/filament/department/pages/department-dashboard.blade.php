@@ -21,9 +21,9 @@
                     <x-filament::icon icon="heroicon-o-chevron-down" class="h-4 w-4" />
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0b8f8f] text-base font-bold text-white">ML</div>
+                    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0b8f8f] text-base font-bold text-white">HT</div>
                     <div>
-                        <p class="text-base font-bold text-[#153243] dark:text-white">Manueli Lomaloma</p>
+                        <p class="text-base font-bold text-[#153243] dark:text-white">Haden Talagi</p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Director</p>
                     </div>
                 </div>
